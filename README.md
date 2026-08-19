@@ -3,7 +3,8 @@
 Entrenador de recuperación activa para una entrevista junior de backend con Python, Django y Django REST Framework.
 
 - Django 6.0.8
-- 169 ejercicios en 11 módulos
+- 172 ejercicios en 11 módulos
+- Nivel 1 reforzado con 64 fundamentos ordenados: Model completo, CRUD ORM, ManyToMany, ModelSerializer, auth y flujo de una API mínima
 - Todos los ejercicios parten de código, SQL, HTTP o comandos reales
 - Modos específicos para debugging, completar código, entrevista y “¿está bien o mal?”
 - 20 ejercicios de veredicto: primero se responde y después aparece el motivo
@@ -36,7 +37,7 @@ No hace falta ejecutar migraciones: esta versión no usa base de datos.
 python manage.py test
 ```
 
-Los tests validan las páginas/API y también la integridad pedagógica del mazo: IDs únicos, módulos requeridos, fuentes y proporción de ejercicios con código.
+Los tests validan las páginas/API y también la integridad pedagógica del mazo: IDs únicos, módulos requeridos, fuentes, proporción de ejercicios con código y cobertura práctica del Nivel 1.
 
 ## Vercel
 
