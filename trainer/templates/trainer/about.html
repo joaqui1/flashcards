@@ -1,0 +1,36 @@
+{% extends "trainer/base.html" %}
+{% block title %}Temario — Backend Recall{% endblock %}
+{% block content %}
+<section class="shell page-intro">
+  <div class="eyebrow">TEMARIO</div>
+  <h1>El temario de una entrevista, llevado a código.</h1>
+  <p>No es un curso de Python desde cero. Parte de models, relaciones, serializers y ViewSets para practicar decisiones reales de un foro backend.</p>
+</section>
+<section class="shell syllabus">
+  {% for module in modules %}
+    <article class="syllabus-row">
+      <span>{{ forloop.counter }}</span>
+      <div>
+        <h2>{{ module.name }}</h2>
+        <p>{{ module.description }}</p>
+        <small>{{ module.card_count }} ejercicios · {{ module.code_count }} con código</small>
+      </div>
+      <a href="{% url 'trainer:study' %}?module={{ module.id }}">Practicar</a>
+    </article>
+  {% endfor %}
+</section>
+<section class="shell version-box">
+  <div>
+    <span class="eyebrow">VERSIÓN</span>
+    <h2>Django {{ version.django }}</h2>
+  </div>
+  <p>Contenido verificado el {{ version.verified }}. Las soluciones enlazan documentación oficial y priorizan lectura de código, debugging, seguridad y performance.</p>
+  <strong>{{ stats.cards }} ejercicios</strong>
+</section>
+<section class="shell outcome-grid">
+  <article><span>01</span><h3>Leer</h3><p>Seguir requests, QuerySets, serializers y ViewSets sin ejecutar el código.</p></article>
+  <article><span>02</span><h3>Detectar</h3><p>Encontrar N+1, permisos incompletos, carreras y status incorrectos.</p></article>
+  <article><span>03</span><h3>Decidir</h3><p>Elegir entre relaciones, queries, constraints, transacciones y tests.</p></article>
+  <article><span>04</span><h3>Explicar</h3><p>Dar una respuesta breve, precisa y defendible en una entrevista junior.</p></article>
+</section>
+{% endblock %}

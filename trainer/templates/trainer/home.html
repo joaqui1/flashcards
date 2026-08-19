@@ -1,0 +1,50 @@
+{% extends "trainer/base.html" %}
+{% block title %}Backend Recall — Django{% endblock %}
+{% block content %}
+<section class="hero shell">
+  <div class="eyebrow">ENTRENADOR DE ENTREVISTAS · BACKEND</div>
+  <h1>Leé el código.<br><span>Defendé tu decisión.</span></h1>
+  <p class="hero-copy">Un foro real como hilo conductor: posts, comentarios, likes y usuarios. Practicá explicar qué hace el código, detectar bugs y proponer una solución antes de mirar.</p>
+  <div class="hero-actions">
+    <a class="button primary" href="{% url 'trainer:study' %}">Empezar sesión</a>
+    <a class="button ghost" href="{% url 'trainer:about' %}">Ver temario</a>
+  </div>
+  <div class="version-line">{{ stats.cards }} ejercicios · {{ stats.verdicts }} de bien/mal · Django {{ version.django }} · verificado {{ version.verified }}</div>
+</section>
+
+<section class="shell section">
+  <div class="section-heading">
+    <span class="eyebrow">RUTA</span>
+    <h2>Una ruta de práctica, no un glosario.</h2>
+  </div>
+  <div class="module-grid">
+    {% for module in modules %}
+      <a class="module-card" href="{% url 'trainer:study' %}?module={{ module.id }}">
+        <span class="module-index">{{ forloop.counter }}</span>
+        <h3>{{ module.name }}</h3>
+        <p>{{ module.description }}</p>
+        <span class="module-count">{{ module.card_count }} ejercicios · {{ module.code_count }} con código</span>
+        <span class="module-link">Practicar →</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="shell feature-row">
+  <article>
+    <span class="feature-number">01</span>
+    <h3>Veredicto primero</h3>
+    <p>Elegís “está bien” o “está mal” antes de ver la respuesta. Después aparece si acertaste y la explicación técnica.</p>
+  </article>
+  <article>
+    <span class="feature-number">02</span>
+    <h3>Debugging activo</h3>
+    <p>Buscás N+1, permisos incompletos, errores de ORM, carreras y contratos HTTP que no cierran.</p>
+  </article>
+  <article>
+    <span class="feature-number">03</span>
+    <h3>Respuesta defendible</h3>
+    <p>Cada solución explica el porqué y enlaza documentación oficial de Django, DRF, PostgreSQL, Git o Python.</p>
+  </article>
+</section>
+{% endblock %}

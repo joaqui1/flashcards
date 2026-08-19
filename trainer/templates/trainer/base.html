@@ -1,0 +1,30 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Backend Recall: práctica de código para entrevistas junior de Python, Django y Django REST Framework.">
+  <title>{% block title %}Backend Recall{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'trainer/styles.css' %}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{% url 'trainer:home' %}">
+      <span class="brand-mark">BR</span>
+      <span>Backend Recall</span>
+    </a>
+    <nav class="nav">
+      <a href="{% url 'trainer:study' %}">Estudiar</a>
+      <a href="{% url 'trainer:about' %}">Temario</a>
+    </nav>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <footer class="footer">
+    <span>Django {{ version.django|default:"6.0.8" }}</span>
+    <span>•</span>
+      <span>Python · Django · DRF</span>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,98 @@
+{% extends "trainer/base.html" %}
+{% load static %}
+{% block title %}Estudiar — Backend Recall{% endblock %}
+{% block content %}
+<section class="study-shell shell" data-study-root>
+  <div class="study-head">
+    <div>
+      <div class="eyebrow">SESIÓN</div>
+      <h1>Pensá como en la entrevista.</h1>
+    </div>
+    <div class="study-stats">
+      <div><strong data-stat-due>0</strong><span>pendientes</span></div>
+      <div><strong data-stat-seen>0</strong><span>vistas</span></div>
+      <div><strong data-stat-mastered>0</strong><span>dominadas</span></div>
+    </div>
+  </div>
+
+  <div class="study-toolbar">
+    <label>
+      <span>Módulo</span>
+      <select data-module-select>
+        <option value="all">Todos</option>
+        {% for module in modules %}
+          <option value="{{ module.id }}">{{ module.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>Tipo de ejercicio</span>
+      <select data-mode-select>
+        <option value="all">Todos los tipos</option>
+        <option value="code">Leer código</option>
+        <option value="debugging">Debugging</option>
+        <option value="completar">Completar código</option>
+        <option value="veredicto">¿Está bien o mal?</option>
+        <option value="entrevista">Entrevista Junior</option>
+      </select>
+    </label>
+    <button class="text-button" data-reset-session>Mezclar sesión</button>
+    <button class="text-button danger" data-reset-progress>Reiniciar progreso</button>
+  </div>
+
+  <div class="progress-track"><span data-progress-bar></span></div>
+
+  <section class="flashcard-wrap" aria-live="polite">
+    <article class="flashcard" data-card tabindex="0">
+      <div class="card-topline">
+        <span data-kind>CONCEPTO</span>
+        <span data-difficulty>BASE</span>
+      </div>
+      <div class="card-body front" data-front>
+        <span class="card-kicker">LEÉ · PENSÁ · EXPLICÁ</span>
+        <pre data-code hidden><code></code></pre>
+        <h2 data-question>Cargando…</h2>
+        <div class="verdict-panel" data-verdict-panel hidden>
+          <p>Elegí antes de ver la explicación</p>
+          <div class="verdict-choices">
+            <button data-verdict-choice="true"><span>✓</span> Está bien</button>
+            <button data-verdict-choice="false"><span>×</span> Está mal</button>
+          </div>
+        </div>
+        <button class="reveal-button" data-reveal>Dar vuelta <kbd>Space</kbd></button>
+      </div>
+      <div class="card-body back" data-back hidden>
+        <span class="card-kicker">RESPUESTA</span>
+        <div class="verdict-feedback" data-verdict-feedback hidden>
+          <strong data-verdict-result></strong>
+          <span data-verdict-label></span>
+        </div>
+        <h2 data-answer></h2>
+        <pre data-answer-code hidden><code></code></pre>
+        <p class="explanation" data-explanation></p>
+        <a class="source-link" data-source target="_blank" rel="noopener">Ver documentación oficial ↗</a>
+      </div>
+    </article>
+  </section>
+
+  <p class="keyboard-hint"><kbd>Espacio</kbd> revela · <kbd>1</kbd> a <kbd>4</kbd> califican tu respuesta</p>
+
+  <section class="rating-panel" data-rating hidden>
+    <p>¿Qué tan bien te salió sin mirar?</p>
+    <div class="rating-grid">
+      <button data-grade="again"><strong>1</strong><span>No salió</span><small>vuelve pronto</small></button>
+      <button data-grade="hard"><strong>2</strong><span>Costó</span><small>intervalo corto</small></button>
+      <button data-grade="good"><strong>3</strong><span>Bien</span><small>espaciar</small></button>
+      <button data-grade="easy"><strong>4</strong><span>Fácil</span><small>espaciar más</small></button>
+    </div>
+  </section>
+
+  <div class="session-empty" data-empty hidden>
+    <div class="eyebrow">SESIÓN COMPLETA</div>
+    <h2>No quedan tarjetas para esta tanda.</h2>
+    <p>Podés mezclar otra sesión, cambiar los filtros o volver cuando haya tarjetas vencidas.</p>
+    <button class="button primary" data-restart>Otra tanda</button>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'trainer/study.js' %}" defer></script>{% endblock %}
