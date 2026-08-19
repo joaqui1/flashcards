@@ -33,6 +33,7 @@
         <option value="debugging">Debugging</option>
         <option value="completar">Completar código</option>
         <option value="veredicto">¿Está bien o mal?</option>
+        <option value="casos">Mini-casos</option>
         <option value="entrevista">Entrevista Junior</option>
       </select>
     </label>
@@ -50,6 +51,7 @@
       </div>
       <div class="card-body front" data-front>
         <span class="card-kicker">LEÉ · PENSÁ · EXPLICÁ</span>
+        <p class="question-context" data-context hidden></p>
         <pre data-code hidden><code></code></pre>
         <h2 data-question>Cargando…</h2>
         <div class="verdict-panel" data-verdict-panel hidden>
@@ -69,7 +71,10 @@
         </div>
         <h2 data-answer></h2>
         <pre data-answer-code hidden><code></code></pre>
-        <p class="explanation" data-explanation></p>
+        <div class="explanation" data-explanation-wrap hidden>
+          <span>DESDE PRIMEROS PRINCIPIOS</span>
+          <p data-explanation></p>
+        </div>
         <a class="source-link" data-source target="_blank" rel="noopener">Ver documentación oficial ↗</a>
       </div>
     </article>

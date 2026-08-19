@@ -4,7 +4,8 @@
 
   const els = {
     card: root.querySelector('[data-card]'), front: root.querySelector('[data-front]'), back: root.querySelector('[data-back]'),
-    question: root.querySelector('[data-question]'), answer: root.querySelector('[data-answer]'), explanation: root.querySelector('[data-explanation]'),
+    question: root.querySelector('[data-question]'), context: root.querySelector('[data-context]'), answer: root.querySelector('[data-answer]'),
+    explanation: root.querySelector('[data-explanation]'), explanationWrap: root.querySelector('[data-explanation-wrap]'),
     code: root.querySelector('[data-code]'), answerCode: root.querySelector('[data-answer-code]'), kind: root.querySelector('[data-kind]'), difficulty: root.querySelector('[data-difficulty]'),
     source: root.querySelector('[data-source]'), reveal: root.querySelector('[data-reveal]'), rating: root.querySelector('[data-rating]'),
     verdictPanel: root.querySelector('[data-verdict-panel]'), verdictFeedback: root.querySelector('[data-verdict-feedback]'),
@@ -33,6 +34,7 @@
     if (els.mode.value === 'debugging') return card.kind === 'debugging';
     if (els.mode.value === 'completar') return card.kind === 'completar';
     if (els.mode.value === 'veredicto') return card.verdict !== null;
+    if (els.mode.value === 'casos') return card.kind === 'mini caso';
     return card.code && !['debugging', 'completar'].includes(card.kind) && card.module !== 'entrevista';
   }
   function eligibleCards() {
@@ -66,9 +68,11 @@
     els.verdictFeedback.className = 'verdict-feedback';
     els.reveal.hidden = isVerdictCard;
     els.question.textContent = current.question;
+    els.context.textContent = current.context || '';
+    els.context.hidden = !current.context;
     els.answer.textContent = current.answer;
     els.explanation.textContent = current.explanation || '';
-    els.explanation.hidden = !current.explanation;
+    els.explanationWrap.hidden = !current.explanation;
     els.kind.textContent = current.kind.toUpperCase();
     els.difficulty.textContent = current.difficulty.toUpperCase();
     els.source.href = current.source;

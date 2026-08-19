@@ -51,15 +51,96 @@ DOCS = {
 }
 
 
+# Some prompts are intentionally short, like they would be in an interview. These
+# notes provide the missing scenario without giving away the answer. Explanations
+# then rebuild the answer from the underlying invariant instead of adding trivia.
+CARD_CONTEXTS = {
+    "dj01": "Un cliente pide el detalle de un post. Seguí la petición desde que entra al servidor hasta que Django arma la respuesta.",
+    "dj04": "El navegador pide /api/posts/, pero Django responde 404. La función views.posts sí existe y no está fallando al ejecutarse.",
+    "m18": "El endpoint de likes puede recibir dos POST casi al mismo tiempo y ambos pasan por procesos distintos del servidor.",
+    "m22": "La migración se aplicará sobre una tabla que ya contiene posts; PostgreSQL debe poder asignar un valor válido a cada fila existente.",
+    "o16": "El listado devuelve 100 posts y el template accede al username del autor de cada uno. Medí las consultas, no solo el tiempo de Python.",
+    "o17": "Cada post puede tener muchos likes y cada usuario puede likear muchos posts. El listado necesita mostrar los usuarios de cada relación.",
+    "o28": "Reservar un turno es una operación de lectura y escritura. Dos workers pueden leer el mismo estado antes de que alguno guarde.",
+    "s02": "Este serializer también acepta datos de escritura y el modelo seguirá sumando campos a medida que crezca el producto.",
+    "s06": "El mismo serializer atiende PUT y PATCH. En PATCH el cliente envía únicamente el campo que quiere cambiar.",
+    "s08": "El endpoint serializa una página de 50 posts y calcula num_likes para cada instancia.",
+    "d07": "La action /like/ funciona como toggle: la misma request agrega o quita el like según el estado que encuentre al llegar.",
+    "d09": "La API admite ?publicado=true y ?publicado=false. Considerá también errores de tipeo como ?publicado=si.",
+    "d14": "El proyecto tiene filtros y paginación global configurados. Esta implementación reemplaza el list provisto por DRF.",
+    "h15": "Un cliente móvil, un monitor y un cache consumen la misma API; todos deben distinguir éxito de error sin interpretar cada body.",
+    "h16": "Un crawler, un navegador o un cache pueden repetir un GET sin pedir confirmación. La ruta propuesta agrega un like.",
+    "p02": "El endpoint GET /posts/ devuelve una colección. IsOwner solo implementa has_object_permission y el queryset incluye todos los posts.",
+    "p06": "Compará dos casos: una request sin credenciales válidas y otra de un usuario identificado que intenta editar un post ajeno.",
+    "p09": "El frontend y la API usan una sesión guardada en cookie; el navegador adjunta esa cookie automáticamente a cada request.",
+    "p10": "La API puede recibir requests desde navegadores, scripts, curl y otros servidores. CORS solo lo interpreta el navegador.",
+    "t05": "Este es el único test de un listado que además filtra resultados según el usuario autenticado.",
+    "t08": "El test es determinista cuando corre aislado, pero cambia de resultado según qué tests se ejecutaron antes.",
+    "t12": "El objetivo no es solo apagar el 500: necesitás entender la causa y dejar una prueba que impida que vuelva.",
+    "g05": "La aplicación no puede operar de forma segura sin SECRET_KEY. El valor llega como variable de entorno durante el arranque.",
+    "g08": "El deploy puede tener varias instancias sirviendo tráfico mientras cambia el esquema compartido de la base.",
+    "g10": "El mismo commit funciona localmente, pero falla al desplegar. Asumí que el error depende del entorno hasta demostrar lo contrario.",
+    "py01": "La función puede ejecutarse muchas veces durante la vida del mismo proceso web.",
+    "e02": "Este endpoint recibe datos de internet y crea un post. Evaluá errores, seguridad, contrato HTTP y validación.",
+    "e04": "Hay una regla de negocio: un usuario solo puede tener un like por post. La app corre con más de un worker.",
+    "e05": "La respuesta es correcta pero hace 203 queries para devolver una sola página. Tenés acceso a logs, SQL y una copia con datos realistas.",
+    "e06": "La API permite que cada usuario borre sus propios posts, pero nunca los de otra persona.",
+    "e07": "La misma regla puede ser atravesada por la API, el admin, un script o dos requests concurrentes.",
+    "e13": "JWT sería una decisión de arquitectura para una API nueva, no un requisito ya justificado por el tipo de cliente.",
+    "e16": "La tabla es grande, recibe escrituras continuamente y el deploy debe evitar una ventana de indisponibilidad.",
+    "e18": "La action reportar cambia estado y llegará a producción como parte de una API ya consumida por clientes.",
+}
+
+
+FIRST_PRINCIPLES = {
+    "dj01": "HTTP entra como una petición y debe salir como una respuesta. El URLconf es la tabla que traduce path a código; la view es el límite que transforma el request en una HttpResponse. Si no hay patrón, la view ni siquiera se ejecuta.",
+    "dj04": "Un 404 de routing ocurre antes de la lógica de la view. Por eso se reconstruye la ruta efectiva de afuera hacia adentro: URLconf raíz, prefijo de include, patrones de la app y orden de coincidencia.",
+    "m18": "Una comprobación en Python solo describe lo que vio un proceso en un instante. La unicidad es una propiedad de los datos y debe vivir en la base, que es el único punto compartido por todos los workers.",
+    "m22": "Una columna NOT NULL afirma que cada fila tiene un valor. Al agregarla, las filas viejas no desaparecen: primero hay que definir cómo obtienen ese valor y recién después exigir la restricción.",
+    "o16": "El costo real es cantidad de viajes a la base. Si una consulta trae posts y cada acceso a autor dispara otra, N objetos producen 1 + N queries. Un JOIN permite traer la relación de valor único en el mismo viaje.",
+    "o17": "Una relación múltiple no cabe en una sola fila sin repetir datos del post. prefetch_related hace pocas consultas separadas y arma el mapa post → likes en memoria, evitando una consulta por post.",
+    "o28": "Una reserva válida exige que observar 'disponible' y cambiarlo sea una sola decisión indivisible. La transacción define el límite y el lock impide que otro proceso tome esa decisión sobre la misma fila al mismo tiempo.",
+    "s02": "Un serializer es una frontera de confianza. fields define qué atraviesa esa frontera; una allowlist explícita mantiene cerrado todo campo nuevo hasta que alguien decida exponerlo.",
+    "s06": "PATCH significa modificación parcial, así que ausencia no equivale a valor vacío. La validación debe combinar lo recibido con el estado actual en vez de asumir que todas las claves existen.",
+    "s08": "SerializerMethodField ejecuta Python por objeto. Si ese Python consulta la base, el costo crece con la página. La agregación debe ocurrir en el queryset para que la base calcule todo en conjunto.",
+    "d07": "Una operación idempotente expresa un estado deseado: 'que exista el like' o 'que no exista'. Un toggle expresa 'invertí lo que veas', por eso reintentos y concurrencia pueden producir un resultado distinto al solicitado.",
+    "d09": "Los query params son texto no confiable. Convertir cualquier valor desconocido a False transforma un error del cliente en una consulta válida pero equivocada; primero se valida el vocabulario y luego se convierte.",
+    "d14": "El list de DRF no solo serializa: compone filtros, paginación y formato de respuesta. Al reemplazarlo, también reemplazás esas garantías y debés reintroducirlas explícitamente.",
+    "h15": "El status es la señal común del protocolo y el body es el detalle de la aplicación. Si todo es 200, cada consumidor debe inventar su propia forma de descubrir que la operación falló.",
+    "h16": "Safe significa que la intención del método es observar, no modificar. La infraestructura puede repetir o anticipar lecturas; si un GET escribe, una optimización legítima se convierte en un efecto lateral inesperado.",
+    "p02": "Autorizar un objeto y seleccionar una colección son problemas distintos. En retrieve hay un objeto sobre el que evaluar ownership; en list primero hay que definir qué filas son visibles mediante el queryset.",
+    "p06": "Autenticación responde '¿quién sos?' y autorización responde '¿podés hacer esto?'. 401 pertenece al primer fallo; 403, al segundo, con el matiz de que el autenticador elegido determina la respuesta al anónimo.",
+    "p09": "CSRF existe porque el navegador adjunta cookies aunque la request haya sido iniciada por otro sitio. El token agrega una prueba que ese sitio atacante no puede conocer, ligando la acción al frontend legítimo.",
+    "p10": "CORS limita qué respuestas deja leer un navegador. No valida identidad, no protege el endpoint de otros clientes y no decide si un usuario puede modificar un recurso; esas decisiones siguen siendo del backend.",
+    "t05": "Un test vale por la propiedad observable que protege. El 200 solo prueba que hubo una respuesta exitosa; no demuestra que sean los datos correctos, en el orden correcto ni visibles para el usuario correcto.",
+    "t08": "Un test debe partir de un mundo conocido. Si depende del orden, algún estado escapó de su límite: base, cache, reloj, mock o configuración. Aislar ese estado elimina la casualidad, no solo el síntoma.",
+    "t12": "El traceback es una cadena causal. Se reproduce para fijar el fenómeno, se encuentra la primera línea propia que rompe el contrato y se captura ese caso en un test antes de corregirlo.",
+    "g05": "Un secreto requerido es una precondición del proceso. Fallar al arrancar mantiene el error cerca de su causa; aceptar None desplaza el fallo a una request posterior y puede dejar la aplicación en un estado inseguro.",
+    "g08": "Código y esquema no cambian exactamente al mismo tiempo. Una migración segura conserva compatibilidad durante la transición: primero habilita ambos mundos, después mueve datos y por último elimina lo viejo.",
+    "g10": "Si el código es el mismo, la variable está en lo que lo rodea: configuración, dependencias, datos, esquema, red o proceso de arranque. Comparar esos inputs reduce el espacio de búsqueda de forma sistemática.",
+    "py01": "Python evalúa los valores por defecto una vez, al definir la función. Una lista es mutable, así que cada llamada recibe el mismo objeto; None funciona como señal para crear un objeto nuevo por invocación.",
+    "e02": "Una request es input no confiable. El flujo robusto identifica al actor, valida datos, aplica permisos y recién entonces persiste; cada fallo esperado se convierte en una respuesta HTTP explícita.",
+    "e04": "exists seguido de create son dos operaciones, y otro worker puede entrar entre ambas. La constraint vuelve atómica la regla de unicidad; la aplicación se ocupa de traducir el conflicto a una respuesta útil.",
+    "e05": "Optimizar empieza por medir dónde se consume el tiempo. El número 203 sugiere trabajo repetido: se identifica el patrón de queries, se cambia la carga de datos y se vuelve a medir con el mismo escenario.",
+    "e06": "Estar autenticado solo prueba identidad. Ownership es una regla adicional sobre la relación usuario–recurso y debe comprobarse en el backend para cada operación sensible.",
+    "e07": "El serializer mejora la experiencia en una entrada concreta; la constraint protege la verdad global de los datos. Se usan ambas porque tienen alcances y fallos distintos.",
+    "e13": "Un mecanismo de autenticación se elige desde las amenazas y el ciclo de vida de la sesión. El formato del token no resuelve por sí solo almacenamiento, revocación, expiración ni protección del navegador.",
+    "e16": "La disponibilidad exige evitar un cambio que necesite reescribir o validar toda la tabla de una vez. Expandir, completar por lotes y contraer divide el riesgo en pasos compatibles y reversibles.",
+    "e18": "Una action es una nueva capacidad pública. Se revisa desde sus invariantes: quién puede ejecutarla, qué entrada acepta, qué cambia, cómo falla y cómo se demuestra todo eso con tests.",
+}
+
+
 def block(value):
     return dedent(value).strip()
 
 
-def c(card_id, module, question, answer, *, code="", answer_code="", explanation="", kind="razonamiento", difficulty="base", source="django", verdict=None):
+def c(card_id, module, question, answer, *, code="", answer_code="", context="", explanation="", kind="razonamiento", difficulty="base", source="django", verdict=None):
     return {
         "id": card_id, "module": module, "question": question, "answer": answer,
         "code": block(code) if code else "", "answer_code": block(answer_code) if answer_code else "",
-        "explanation": explanation, "kind": kind, "difficulty": difficulty,
+        "context": context or CARD_CONTEXTS.get(card_id, ""),
+        "explanation": explanation or FIRST_PRINCIPLES.get(card_id, ""),
+        "kind": kind, "difficulty": difficulty,
         "source": DOCS[source], "verdict": verdict,
     }
 
@@ -722,6 +803,668 @@ CARDS = [
         PostSerializer(post)          # salida
         PostSerializer(data=payload)  # entrada
     """, kind="entrevista", source="serializers"),
+    c(
+        "e21",
+        "entrevista",
+        "El proveedor reintenta el mismo webhook y se crean dos pedidos. ¿Qué cambiarías para que procesarlo dos veces produzca un solo resultado?",
+        "Usaría el event_id como clave idempotente, con una UniqueConstraint en la base. Dentro de transaction.atomic intentaría registrar el evento y crearía el pedido una sola vez; un duplicado devolvería éxito sin repetir el efecto.",
+        context="Una tienda recibe webhooks de pago. Si el proveedor no obtiene respuesta rápido, vuelve a enviar exactamente el mismo evento con el mismo event_id.",
+        code="""
+            def pago_confirmado(request):
+                pedido = Pedido.objects.create(
+                    compra_id=request.data["compra_id"],
+                    estado="pagado",
+                )
+                enviar_email(pedido)
+                return Response(status=200)
+        """,
+        answer_code="""
+            class EventoProcesado(models.Model):
+                event_id = models.CharField(max_length=100, unique=True)
+
+            with transaction.atomic():
+                evento, creado = EventoProcesado.objects.get_or_create(
+                    event_id=request.data["event_id"]
+                )
+                if creado:
+                    procesar_pago(request.data)
+        """,
+        explanation="Una red no garantiza que cada mensaje llegue exactamente una vez: una respuesta puede perderse aunque el servidor haya terminado el trabajo. Por eso el consumidor debe reconocer la identidad de la operación y guardar esa identidad junto con el efecto. La unicidad en base convierte 'este evento ya fue procesado' en una garantía compartida por todos los workers.",
+        kind="mini caso",
+        difficulty="media",
+        source="transactions",
+    ),
+    c(
+        "e22",
+        "entrevista",
+        "La respuesta es correcta, pero pasó de 25 a 126 queries al aumentar el tamaño de página. ¿Dónde nace el crecimiento y cómo lo corregirías?",
+        "Hay una query inicial, una por autor y una por count de comentarios para cada post: 1 + 2N. Cargaría autor con select_related y anotaría la cantidad de comentarios con Count en el queryset.",
+        context="El feed funcionaba bien con 12 posts. Producto subió PAGE_SIZE a 50 y la latencia aumentó aunque el JSON no cambió.",
+        code="""
+            class PostSerializer(serializers.ModelSerializer):
+                autor = serializers.CharField(source="autor.username")
+                comentarios = serializers.SerializerMethodField()
+
+                def get_comentarios(self, post):
+                    return post.comentarios.count()
+
+            queryset = Post.objects.all()
+        """,
+        answer_code="""
+            queryset = (
+                Post.objects
+                .select_related("autor")
+                .annotate(num_comentarios=Count("comentarios"))
+            )
+
+            num_comentarios = serializers.IntegerField(read_only=True)
+        """,
+        explanation="La señal importante no es solo que haya muchas queries, sino que su cantidad crezca con cada fila devuelta. Cuando el costo es 1 + 2N, duplicar la página casi duplica los viajes a la base. La corrección mueve el trabajo desde accesos individuales del serializer hacia una consulta que carga y agrega los datos del conjunto completo.",
+        kind="mini caso",
+        difficulty="media",
+        source="optimization",
+    ),
+    c(
+        "e23",
+        "entrevista",
+        "Un usuario ve borradores ajenos en el listado, aunque IsOwnerOrReadOnly funciona al editar. ¿Dónde corregís la filtración?",
+        "En get_queryset. El listado debe seleccionar posts publicados más los borradores del usuario actual; el permiso de objeto sigue protegiendo las operaciones sobre un post concreto.",
+        context="En el foro cualquiera puede leer posts publicados. Un borrador solo debe ser visible para su autor, pero GET /api/posts/ devuelve Post.objects.all().",
+        code="""
+            class PostViewSet(ModelViewSet):
+                queryset = Post.objects.all()
+                permission_classes = [IsOwnerOrReadOnly]
+        """,
+        answer_code="""
+            def get_queryset(self):
+                if self.request.user.is_authenticated:
+                    return Post.objects.filter(
+                        Q(publicado=True) | Q(autor=self.request.user)
+                    )
+                return Post.objects.filter(publicado=True)
+        """,
+        explanation="Un permiso de objeto decide si una acción puede ejecutarse sobre una instancia que ya fue seleccionada. Un listado empieza un paso antes: debe decidir qué filas entran en el universo visible. Si el queryset incluye un borrador ajeno, DRF no aplica has_object_permission fila por fila para quitarlo.",
+        kind="mini caso",
+        difficulty="media",
+        source="permissions",
+    ),
+    c(
+        "e24",
+        "entrevista",
+        "Necesitás agregar estado como NOT NULL sin bloquear una tabla grande. ¿En qué etapas harías el cambio?",
+        "Primero agregaría el campo nullable, desplegaría código compatible, completaría los datos en lotes y recién después agregaría el default o la constraint NOT NULL. Al final retiraría la compatibilidad temporal.",
+        context="Post tiene dos millones de filas y recibe escrituras todo el día. La aplicación nueva necesita estado='borrador' para los registros existentes.",
+        code="""
+            class Post(models.Model):
+                estado = models.CharField(
+                    max_length=20,
+                    null=False,
+                    default="borrador",
+                )
+        """,
+        answer_code="""
+            # 1. Expandir: campo nullable
+            # 2. Desplegar código compatible
+            # 3. Backfill en lotes
+            # 4. Validar y agregar NOT NULL
+            # 5. Limpiar compatibilidad temporal
+        """,
+        explanation="Un deploy no cambia código, procesos y esquema en el mismo instante. La estrategia segura conserva válidos tanto el código viejo como el nuevo durante la transición. Separar estructura, movimiento de datos y restricción evita convertir una única migración larga en el punto de fallo de todo el sistema.",
+        kind="mini caso",
+        difficulty="alta",
+        source="migrations",
+    ),
+    c(
+        "e25",
+        "entrevista",
+        "El cliente recibió el email de confirmación, pero el pedido no existe. ¿Cómo evitás ese estado imposible?",
+        "Programaría el envío con transaction.on_commit para que ocurra únicamente después de confirmar la transacción. Si la actualización de stock falla y hay rollback, el callback no se ejecuta.",
+        context="Crear el pedido y descontar stock están dentro de atomic. El email se envía antes de actualizar stock, y esa segunda escritura a veces falla.",
+        code="""
+            with transaction.atomic():
+                pedido = Pedido.objects.create(usuario=request.user)
+                enviar_confirmacion(pedido.id)
+                descontar_stock(items)  # puede lanzar una excepción
+        """,
+        answer_code="""
+            with transaction.atomic():
+                pedido = Pedido.objects.create(usuario=request.user)
+                descontar_stock(items)
+                transaction.on_commit(
+                    lambda: enviar_confirmacion(pedido.id)
+                )
+        """,
+        explanation="La base puede revertir sus propias escrituras, pero no puede des-enviar un email ni deshacer una llamada HTTP. Los efectos externos deben cruzar el límite solo cuando el estado que describen ya es durable. on_commit conecta esos dos momentos sin mentirle al usuario.",
+        kind="mini caso",
+        difficulty="media",
+        source="transactions",
+    ),
+    c(
+        "e26",
+        "entrevista",
+        "Al pasar de la página 1 a la 2 aparecen posts repetidos y faltan otros. ¿Qué propiedad le falta a la consulta?",
+        "Le falta un orden total y estable. Ordenaría por creado_en y agregaría pk como desempate determinista; si el feed cambia con mucha frecuencia, evaluaría cursor pagination.",
+        context="Muchos posts comparten el mismo creado_en porque fueron importados juntos. La API pagina de a 20 usando offset.",
+        code="""
+            queryset = Post.objects.order_by("-creado_en")
+            # ?page=1, luego ?page=2
+        """,
+        answer_code="""
+            queryset = Post.objects.order_by("-creado_en", "-pk")
+        """,
+        explanation="Paginar significa cortar una secuencia en fronteras. Si varias filas empatan y no existe una regla final de desempate, la base puede devolverlas en distinto orden entre requests. Agregar una clave única convierte el orden parcial en un orden total reproducible.",
+        kind="mini caso",
+        difficulty="media",
+        source="pagination",
+    ),
+    c(
+        "e27",
+        "entrevista",
+        "Un usuario logra que el servidor consulte http://169.254.169.254. ¿Qué vulnerabilidad es y dónde pondrías la defensa?",
+        "Es SSRF. No permitiría que una URL arbitraria controle el destino: usaría una allowlist de hosts y esquemas, resolvería y bloquearía IPs privadas o de metadata, limitaría redirects, tamaño y timeout, y aislaría la salida de red.",
+        context="La API permite importar una imagen desde avatar_url. El backend descarga la dirección recibida para guardarla en su propio storage.",
+        code="""
+            avatar_url = request.data["avatar_url"]
+            response = requests.get(avatar_url, timeout=5)
+            guardar_avatar(response.content)
+        """,
+        answer_code="""
+            # Validar esquema y host contra una allowlist.
+            # Resolver DNS y rechazar rangos privados/metadata.
+            # Limitar redirects, timeout y tamaño de respuesta.
+        """,
+        explanation="Desde la perspectiva de la red, la request la hace el servidor y hereda su acceso a servicios internos. Validar que el texto parezca una URL no alcanza: la garantía necesaria es que el destino efectivo, incluso después de DNS y redirects, pertenezca al conjunto explícitamente permitido.",
+        kind="mini caso",
+        difficulty="alta",
+        source="security",
+    ),
+    c(
+        "e28",
+        "entrevista",
+        "Los tests pasan, pero bajo carga se pierden visitas. ¿Qué operación está compitiendo y cómo la volvés atómica?",
+        "Dos workers leen el mismo valor y luego guardan el mismo incremento. Haría el cálculo en la base con update(visitas=F('visitas') + 1), evitando separar lectura y escritura.",
+        context="Cada request al detalle de un post incrementa visitas. Con una sola request funciona; con varias simultáneas el contador termina por debajo del total real.",
+        code="""
+            post = Post.objects.get(pk=pk)
+            post.visitas += 1
+            post.save(update_fields=["visitas"])
+        """,
+        answer_code="""
+            Post.objects.filter(pk=pk).update(
+                visitas=F("visitas") + 1
+            )
+        """,
+        explanation="El bug vive en el espacio entre leer y escribir. Si dos procesos leen 10, ambos calculan 11 y uno pisa al otro. Una expresión F envía la regla 'sumá uno al valor actual' a la base, donde cada UPDATE opera sobre el último valor confirmado.",
+        kind="mini caso",
+        difficulty="media",
+        source="queries",
+    ),
+    c(
+        "e29",
+        "entrevista",
+        "El tercer ítem es inválido, pero el pedido y los dos primeros quedaron guardados. ¿Cómo hacés que la operación sea todo o nada?",
+        "Validaría la estructura completa antes de escribir y envolvería la creación del pedido y sus ítems en transaction.atomic. Cualquier ValidationError debe salir del bloque para provocar rollback.",
+        context="POST /pedidos/ crea una cabecera y luego recorre los ítems enviados. Cada create se confirma aunque uno posterior falle.",
+        code="""
+            pedido = Pedido.objects.create(usuario=request.user)
+            for data in request.data["items"]:
+                ItemPedido.objects.create(pedido=pedido, **data)
+        """,
+        answer_code="""
+            serializer.is_valid(raise_exception=True)
+            with transaction.atomic():
+                pedido = Pedido.objects.create(usuario=request.user)
+                ItemPedido.objects.bulk_create([
+                    ItemPedido(pedido=pedido, **item)
+                    for item in serializer.validated_data["items"]
+                ])
+        """,
+        explanation="El pedido y sus ítems representan una sola transición del dominio: o existe el conjunto válido o no existe nada. Validar primero reduce fallos previsibles y la transacción convierte todas las escrituras en una unidad que la base confirma o revierte junta.",
+        kind="mini caso",
+        difficulty="media",
+        source="transactions",
+    ),
+    c(
+        "e30",
+        "entrevista",
+        "Intentaste optimizar con only(), pero ahora el endpoint hace más queries. ¿Por qué y qué medirías antes de conservarlo?",
+        "only difiere los campos no incluidos. Si el serializer accede a contenido o autor, Django los consulta después y puede crear N+1. Incluiría los campos realmente usados y select_related para autor, verificándolo con el número de queries.",
+        context="El listado serializa id, titulo, contenido y autor.username. El queryset fue reducido para traer supuestamente menos datos.",
+        code="""
+            queryset = Post.objects.only("id", "titulo")
+        """,
+        answer_code="""
+            queryset = (
+                Post.objects
+                .select_related("autor")
+                .only("id", "titulo", "contenido", "autor__username")
+            )
+        """,
+        explanation="Un campo diferido no desaparece: su costo se posterga hasta el primer acceso. Si ese acceso ocurre para cada objeto, ahorrar bytes en la consulta inicial agrega viajes individuales a la base. La optimización correcta parte del patrón real de lectura del consumidor.",
+        kind="mini caso",
+        difficulty="media",
+        source="optimization",
+    ),
+    c(
+        "e31",
+        "entrevista",
+        "La auditoría dejó de registrar posts cuando se cambió create() por bulk_create(). ¿Qué supuesto se rompió?",
+        "bulk_create no llama save() por instancia ni emite normalmente las señales pre_save/post_save. Movería la regla crítica a una operación de servicio explícita o crearía los registros de auditoría dentro del mismo flujo y transacción.",
+        context="Post.save() o una señal post_save crea RegistroAuditoria. Una importación masiva usa bulk_create para mejorar rendimiento.",
+        code="""
+            Post.objects.bulk_create([
+                Post(titulo=row["titulo"]) for row in filas
+            ])
+        """,
+        answer_code="""
+            with transaction.atomic():
+                posts = Post.objects.bulk_create(posts_pendientes)
+                RegistroAuditoria.objects.bulk_create([
+                    RegistroAuditoria(post=post, accion="importado")
+                    for post in posts
+                ])
+        """,
+        explanation="Las operaciones bulk optimizan precisamente al evitar el ciclo de vida individual de cada modelo. Una regla de negocio que depende de un efecto implícito en save o en una señal deja de ser universal. Las invariantes críticas deben formar parte explícita de la operación que escribe los datos.",
+        kind="mini caso",
+        difficulty="media",
+        source="models",
+    ),
+    c(
+        "e32",
+        "entrevista",
+        "Una custom action permite archivar posts ajenos. ¿Qué parte del flujo de DRF fue salteada?",
+        "Post.objects.get evita get_queryset, el manejo de 404 y el chequeo de permisos de objeto del ViewSet. Usaría self.get_object() y mantendría IsOwner o el permiso correspondiente.",
+        context="El ViewSet tiene IsAuthenticated y un permiso de ownership. retrieve y update funcionan bien; solo falla la action archivar.",
+        code="""
+            @action(detail=True, methods=["post"])
+            def archivar(self, request, pk=None):
+                post = Post.objects.get(pk=pk)
+                post.archivado = True
+                post.save()
+        """,
+        answer_code="""
+            @action(detail=True, methods=["post"])
+            def archivar(self, request, pk=None):
+                post = self.get_object()
+                post.archivado = True
+                post.save(update_fields=["archivado"])
+                return Response(status=204)
+        """,
+        explanation="La seguridad no está en el nombre del ViewSet sino en el camino que recorre cada objeto. self.get_object compone selección, búsqueda y autorización; consultar el manager directamente crea un camino alternativo que no hereda esas garantías.",
+        kind="mini caso",
+        difficulty="media",
+        source="views",
+    ),
+    c(
+        "e33",
+        "entrevista",
+        "Dos editores abren el mismo post y el último PATCH pisa cambios del primero. ¿Cómo detectarías una edición basada en datos viejos?",
+        "Agregaría una versión o usaría updated_at como token de concurrencia. El cliente envía la versión leída y el UPDATE exige que siga siendo la actual; si no coincide, respondería 409 o 412 para que recargue y resuelva el conflicto.",
+        context="Ana y Luis cargan la versión 7. Ana guarda y crea la versión 8; Luis envía después cambios calculados sobre la versión 7.",
+        code="""
+            post.titulo = request.data["titulo"]
+            post.save(update_fields=["titulo"])
+        """,
+        answer_code="""
+            updated = Post.objects.filter(
+                pk=pk,
+                version=request.data["version"],
+            ).update(
+                titulo=request.data["titulo"],
+                version=F("version") + 1,
+            )
+            if not updated:
+                return Response(status=409)
+        """,
+        explanation="El problema no es que dos usuarios escriban, sino que uno decide usando un estado que ya dejó de existir. La versión hace visible esa precondición y el UPDATE condicional une comprobación y escritura en una sola operación atómica.",
+        kind="mini caso",
+        difficulty="alta",
+        source="transactions",
+    ),
+    c(
+        "e34",
+        "entrevista",
+        "Generar el reporte demora un minuto y el proxy corta la request. ¿Qué contrato HTTP propondrías?",
+        "Crearía un trabajo en background, respondería 202 Accepted con un job_id y expondría un recurso para consultar estado y resultado. La creación del trabajo debería ser idempotente si el cliente puede reintentar.",
+        context="POST /reportes/ arma un PDF grande de forma sincrónica. El cliente no necesita recibir el archivo en la misma conexión.",
+        code="""
+            def crear_reporte(request):
+                archivo = generar_pdf(request.user)
+                return FileResponse(archivo)
+        """,
+        answer_code="""
+            trabajo = crear_trabajo_reporte(request.user)
+            encolar_reporte(trabajo.id)
+            return Response(
+                {"job_id": trabajo.id, "status": "pendiente"},
+                status=202,
+            )
+        """,
+        explanation="Una request HTTP tiene una ventana de tiempo limitada; un trabajo puede durar mucho más. Separar aceptación de finalización convierte la tarea en un recurso durable que puede observarse, reintentarse y fallar sin mantener una conexión abierta.",
+        kind="mini caso",
+        difficulty="media",
+        source="responses",
+    ),
+    c(
+        "e35",
+        "entrevista",
+        "Un atacante prueba miles de contraseñas válidas contra una misma cuenta. ¿Por qué IsAuthenticated no ayuda y qué controles sumarías?",
+        "El login ocurre antes de estar autenticado. Aplicaría throttling por IP y por identidad objetivo, demoras o bloqueos progresivos, monitoreo y MFA; cuidaría no crear un mecanismo fácil de denegación de servicio contra una cuenta.",
+        context="POST /login/ no tiene límites. Las credenciales incorrectas responden rápido y el atacante distribuye requests entre varias IPs.",
+        code="""
+            user = authenticate(
+                username=request.data["username"],
+                password=request.data["password"],
+            )
+        """,
+        answer_code="""
+            # Combinar límites por IP y por cuenta.
+            # Registrar intentos y aplicar backoff progresivo.
+            # Alertar y ofrecer MFA para cuentas sensibles.
+        """,
+        explanation="Autenticación comprueba una credencial, pero no limita cuántas veces puede intentarse. Cada intento entrega información y consume capacidad. La defensa reduce la velocidad y el valor de probar combinaciones, sin confiar en una sola identidad de red que el atacante puede cambiar.",
+        kind="mini caso",
+        difficulty="media",
+        source="security",
+    ),
+    c(
+        "e36",
+        "entrevista",
+        "Un archivo llamado foto.jpg agota memoria y contiene HTML ejecutable. ¿Qué debe validar el backend además de la extensión?",
+        "Limitaría tamaño antes y durante la lectura, detectaría el tipo real del contenido, generaría un nombre propio, almacenaría fuera del árbol ejecutable y serviría con Content-Type y Content-Disposition seguros. Para imágenes, decodificaría y reescribiría el archivo.",
+        context="El endpoint de avatar acepta cualquier UploadedFile y conserva el nombre y Content-Type enviados por el cliente.",
+        code="""
+            avatar = request.FILES["avatar"]
+            user.avatar.save(avatar.name, avatar)
+        """,
+        answer_code="""
+            # Límite de bytes y dimensiones.
+            # Verificar contenido real, no solo nombre/MIME declarado.
+            # Renombrar, aislar el storage y servir sin ejecución inline.
+        """,
+        explanation="Nombre, extensión y MIME son afirmaciones del atacante. La garantía necesaria se refiere a los bytes reales y a cómo serán interpretados después. Validar recursos, normalizar el contenido y aislar su entrega evita que una carga se convierta en consumo ilimitado o código activo.",
+        kind="mini caso",
+        difficulty="media",
+        source="security",
+    ),
+    c(
+        "e37",
+        "entrevista",
+        "El cache muestra el panel de Ana cuando entra Bruno. ¿Qué dato faltó representar en la clave?",
+        "La respuesta depende del usuario, pero la clave solo depende de la ruta. Incluiría la identidad y cualquier otro input que cambie la representación, o cachearía únicamente datos públicos y compondría lo privado fuera del cache compartido.",
+        context="GET /dashboard/ se cachea por path durante cinco minutos. El HTML incluye nombre, métricas y notificaciones del usuario autenticado.",
+        code="""
+            key = f"page:{request.path}"
+            cache.set(key, render_dashboard(request.user), 300)
+        """,
+        answer_code="""
+            key = f"dashboard:user:{request.user.pk}:v1"
+            # O no almacenar respuestas privadas en un cache compartido.
+        """,
+        explanation="Una clave de cache debe identificar todos los inputs que determinan el valor. Si dos requests distintas colisionan en la misma clave, el cache afirma falsamente que sus respuestas son equivalentes. Con datos privados, ese error de identidad se convierte además en una filtración.",
+        kind="mini caso",
+        difficulty="alta",
+        source="security",
+    ),
+    c(
+        "e38",
+        "entrevista",
+        "El worker recibe un pedido que todavía no puede consultar. ¿Por qué ocurre aunque create() se ejecutó antes de encolar?",
+        "El pedido existe solo dentro de una transacción aún no confirmada. Encolaría la tarea con transaction.on_commit para publicarla después del commit; además haría la tarea idempotente porque una cola puede reentregarla.",
+        context="La API crea un pedido dentro de atomic y publica inmediatamente su ID en una cola. El worker usa otra conexión a la base.",
+        code="""
+            with transaction.atomic():
+                pedido = Pedido.objects.create(usuario=request.user)
+                procesar_pedido.delay(pedido.id)
+        """,
+        answer_code="""
+            with transaction.atomic():
+                pedido = Pedido.objects.create(usuario=request.user)
+                transaction.on_commit(
+                    lambda: procesar_pedido.delay(pedido.id)
+                )
+        """,
+        explanation="Las conexiones no ven normalmente escrituras no confirmadas de otra transacción. Publicar el mensaje antes del commit permite que el mundo externo observe una referencia que todavía no es durable y que incluso podría desaparecer por rollback. on_commit alinea ambos límites.",
+        kind="mini caso",
+        difficulty="media",
+        source="transactions",
+    ),
+    c(
+        "e39",
+        "entrevista",
+        "Dos transferencias opuestas quedan en deadlock. ¿Qué cambiarías además de usar atomic?",
+        "Bloquearía siempre las cuentas en un orden determinista, por ejemplo por pk, para que todas las transacciones adquieran locks en la misma secuencia. También manejaría el deadlock con un reintento acotado de la transacción completa.",
+        context="Una transferencia de A hacia B bloquea A y luego B; al mismo tiempo otra de B hacia A bloquea B y luego A.",
+        code="""
+            with transaction.atomic():
+                origen = Cuenta.objects.select_for_update().get(pk=origen_id)
+                destino = Cuenta.objects.select_for_update().get(pk=destino_id)
+        """,
+        answer_code="""
+            ids = sorted([origen_id, destino_id])
+            cuentas = {
+                c.pk: c for c in Cuenta.objects
+                .select_for_update()
+                .filter(pk__in=ids)
+                .order_by("pk")
+            }
+        """,
+        explanation="Un deadlock aparece cuando cada transacción posee un recurso que la otra necesita y ambas esperan. atomic garantiza rollback, pero no elimina ese ciclo. Un orden global de adquisición hace imposible la espera circular; el reintento cubre conflictos residuales que la base detecte.",
+        kind="mini caso",
+        difficulty="alta",
+        source="transactions",
+    ),
+    c(
+        "e40",
+        "entrevista",
+        "Agregaste un índice a publicado y la consulta sigue haciendo sequential scan. ¿Por qué puede ser una decisión correcta del planner?",
+        "Si casi todas las filas tienen publicado=True, el índice no descarta suficiente información y leerlo más visitar la tabla cuesta más que recorrerla. Evaluaría un índice parcial o compuesto alineado con el filtro y el orden reales.",
+        context="El 97% de los posts está publicado. El feed filtra publicado=True y ordena por creado_en descendente con límite 20.",
+        code="""
+            Post.objects.filter(publicado=True).order_by("-creado_en")[:20]
+            # índice actual: (publicado)
+        """,
+        answer_code="""
+            models.Index(
+                fields=["-creado_en"],
+                condition=Q(publicado=True),
+                name="posts_publicados_recientes",
+            )
+        """,
+        explanation="Un índice es útil cuando reduce trabajo, no por existir. Un booleano tiene muy pocos valores y puede seleccionar casi toda la tabla. El diseño debe seguir la consulta completa: qué filas se excluyen, en qué orden se necesitan y cuántas se leen realmente.",
+        kind="mini caso",
+        difficulty="alta",
+        source="postgres",
+    ),
+    c(
+        "e41",
+        "entrevista",
+        "get_or_create devolvió dos suscripciones iguales bajo concurrencia. ¿Qué condición faltaba para que fuera una garantía?",
+        "Faltaba una restricción única sobre usuario y newsletter. get_or_create ayuda al flujo, pero solo la base puede arbitrar entre workers; agregaría UniqueConstraint y manejaría un posible IntegrityError.",
+        context="La app corre con varios workers. El modelo permite repetir el mismo par usuario-newsletter y dos requests llegan casi juntas.",
+        code="""
+            Suscripcion.objects.get_or_create(
+                usuario=user,
+                newsletter=newsletter,
+            )
+        """,
+        answer_code="""
+            models.UniqueConstraint(
+                fields=["usuario", "newsletter"],
+                name="suscripcion_unica",
+            )
+        """,
+        explanation="Buscar y crear siguen siendo decisiones separadas desde la perspectiva de dos procesos. Ambos pueden observar ausencia. get_or_create puede apoyarse en el conflicto de unicidad, pero si el esquema permite duplicados no existe un árbitro compartido que declare ganador a uno solo.",
+        kind="mini caso",
+        difficulty="media",
+        source="models",
+    ),
+    c(
+        "e42",
+        "entrevista",
+        "Capturaste IntegrityError dentro de atomic y la siguiente query falla con TransactionManagementError. ¿Dónde debe vivir el try/except?",
+        "El IntegrityError debe salir del bloque atomic que quedó roto. Lo capturaría por fuera, o usaría un atomic interno como savepoint y atraparía la excepción después de salir de ese bloque.",
+        context="La función intenta crear un username y, si ya existe, quiere continuar consultando alternativas dentro de la transacción principal.",
+        code="""
+            with transaction.atomic():
+                try:
+                    User.objects.create(username=username)
+                except IntegrityError:
+                    pass
+                User.objects.exists()  # falla
+        """,
+        answer_code="""
+            with transaction.atomic():
+                try:
+                    with transaction.atomic():
+                        User.objects.create(username=username)
+                except IntegrityError:
+                    manejar_duplicado()
+                User.objects.exists()
+        """,
+        explanation="Una excepción de base puede dejar la transacción actual marcada para rollback porque su estado ya no es confiable. Ocultarla dentro del mismo límite no repara ese estado. Un savepoint crea un límite menor que puede revertirse antes de continuar con la transacción exterior.",
+        kind="mini caso",
+        difficulty="alta",
+        source="transactions",
+    ),
+    c(
+        "e43",
+        "entrevista",
+        "La API externa no responde y todos los workers quedan ocupados. ¿Qué faltó definir en la llamada?",
+        "Faltó un timeout explícito. Definiría límites de conexión y lectura, manejaría el error, y solo reintentaría con backoff y jitter cuando la operación sea segura o idempotente.",
+        context="Cada request consulta un proveedor de cotizaciones. requests.get usa sus valores por defecto y el endpoint web espera la respuesta.",
+        code="""
+            response = requests.get(PROVEEDOR_URL)
+            response.raise_for_status()
+        """,
+        answer_code="""
+            response = requests.get(
+                PROVEEDOR_URL,
+                timeout=(2, 5),
+            )
+            response.raise_for_status()
+        """,
+        explanation="Un recurso compartido necesita un tiempo máximo de ocupación. Sin timeout, una dependencia lenta puede retener todos los workers y convertir un fallo parcial en caída total. Reintentar también consume capacidad, por eso requiere límites y una operación que tolere repetición.",
+        kind="mini caso",
+        difficulty="media",
+        source="testing",
+    ),
+    c(
+        "e44",
+        "entrevista",
+        "Un test de expiración falla solo cerca del cambio de segundo. ¿Cómo eliminarías la dependencia del instante exacto?",
+        "Congelaría o inyectaría el reloj y compararía contra un now controlado. También probaría explícitamente los bordes: justo antes, exactamente al vencer y justo después.",
+        context="El código llama timezone.now() varias veces y el test crea un token con expiración de un segundo.",
+        code="""
+            token.expira_en = timezone.now() + timedelta(seconds=1)
+            self.assertFalse(token.expirado())
+        """,
+        answer_code="""
+            instante = timezone.now()
+            token.expira_en = instante + timedelta(seconds=1)
+            self.assertFalse(token.expirado(ahora=instante))
+            self.assertTrue(token.expirado(ahora=token.expira_en))
+        """,
+        explanation="Un test determinista controla todos los inputs, y el tiempo también es un input. Si cada llamada observa un instante distinto, el resultado depende de la velocidad del entorno. Inyectar el reloj transforma el paso del tiempo en datos reproducibles y hace visibles las reglas de borde.",
+        kind="mini caso",
+        difficulty="media",
+        source="django_testing",
+    ),
+    c(
+        "e45",
+        "entrevista",
+        "La nueva versión elimina autor_nombre y rompe una app móvil todavía instalada. ¿Cómo evolucionarías el contrato?",
+        "Mantendría autor_nombre durante una ventana de deprecación y agregaría el nuevo campo de forma aditiva. Mediría su uso, comunicaría el retiro y solo lo eliminaría en una versión incompatible explícita.",
+        context="El backend quiere reemplazar autor_nombre por un objeto autor. No todos los clientes móviles se actualizan al mismo tiempo.",
+        code="""
+            # antes
+            {"id": 7, "autor_nombre": "Ana"}
+
+            # nuevo
+            {"id": 7, "autor": {"id": 3, "nombre": "Ana"}}
+        """,
+        answer_code="""
+            {
+                "id": 7,
+                "autor_nombre": "Ana",  # temporalmente compatible
+                "autor": {"id": 3, "nombre": "Ana"},
+            }
+        """,
+        explanation="El contrato vive en todos sus consumidores, no solo en el servidor. Un cambio destructivo exige que todos migren en el mismo instante, algo que no se controla en clientes distribuidos. Expandir primero permite que versiones viejas y nuevas convivan durante la transición.",
+        kind="mini caso",
+        difficulty="media",
+        source="responses",
+    ),
+    c(
+        "e46",
+        "entrevista",
+        "Una caída breve de la base hace que el orquestador reinicie todas las instancias en bucle. ¿Qué mezcló el health check?",
+        "Mezcló liveness con readiness. Liveness debería indicar si el proceso puede seguir ejecutándose; readiness puede quitarlo del tráfico cuando la base no está disponible sin forzar un reinicio constante.",
+        context="El único /health/ consulta PostgreSQL. Si falla una vez devuelve 500 y la plataforma mata inmediatamente el proceso.",
+        code="""
+            def health(request):
+                connection.ensure_connection()
+                return JsonResponse({"ok": True})
+        """,
+        answer_code="""
+            # /live/  -> el proceso responde; no depende de PostgreSQL
+            # /ready/ -> comprueba dependencias necesarias para recibir tráfico
+        """,
+        explanation="Reiniciar solo ayuda cuando el proceso está roto; no repara una dependencia externa caída. Liveness responde si reiniciar tiene sentido. Readiness responde si esta instancia puede atender ahora. Separarlas evita amplificar un fallo transitorio mediante reinicios coordinados.",
+        kind="mini caso",
+        difficulty="media",
+        source="deploy",
+    ),
+    c(
+        "e47",
+        "entrevista",
+        "Necesitás investigar un 500, pero el log actual guarda tokens y contraseñas. ¿Qué registrarías para conservar trazabilidad sin secretos?",
+        "Usaría logs estructurados con request_id, ruta, método, status, duración, user_id y tipo de error. Redactaría Authorization, cookies, passwords y cuerpos sensibles; el traceback quedaría restringido al entorno seguro.",
+        context="El equipo registra request.headers y request.data completos para poder reproducir errores de producción.",
+        code="""
+            logger.exception(
+                "request failed headers=%s body=%s",
+                request.headers,
+                request.data,
+            )
+        """,
+        answer_code="""
+            logger.exception("request_failed", extra={
+                "request_id": request.id,
+                "path": request.path,
+                "method": request.method,
+                "user_id": request.user.pk,
+            })
+        """,
+        explanation="Observabilidad y confidencialidad no son objetivos opuestos: se necesita identificar la operación y su fallo, no copiar todas sus entradas. Los secretos en logs multiplican su exposición, retención y acceso; los identificadores permiten correlacionar eventos sin almacenar credenciales.",
+        kind="mini caso",
+        difficulty="media",
+        source="security",
+    ),
+    c(
+        "e48",
+        "entrevista",
+        "Exportar un millón de filas consume toda la memoria aunque el QuerySet sea lazy. ¿Qué está materializando el proceso?",
+        "list fuerza a cargar todo el QuerySet y construir todas las filas antes de responder. Iteraría por chunks con iterator y produciría una respuesta streaming, evitando además relaciones que disparen queries por fila.",
+        context="Un endpoint exporta posts a CSV. Funciona con pocos datos, pero el worker muere cuando la tabla crece.",
+        code="""
+            posts = list(Post.objects.all())
+            rows = [serializar_csv(post) for post in posts]
+            return HttpResponse("".join(rows))
+        """,
+        answer_code="""
+            def filas():
+                yield "id,titulo\\n"
+                for post in Post.objects.iterator(chunk_size=2000):
+                    yield serializar_csv(post)
+
+            return StreamingHttpResponse(filas(), content_type="text/csv")
+        """,
+        explanation="Lazy significa que la consulta espera hasta ser consumida, no que su resultado ocupe memoria constante. list y la comprensión materializan toda la colección. El streaming conserva solo una ventana pequeña de datos y entrega cada parte antes de producir la siguiente.",
+        kind="mini caso",
+        difficulty="media",
+        source="optimization",
+    ),
 
     # VEREDICTO — PRIMERO ELEGIR, DESPUÉS EXPLICAR
     c("v01", "drf", "¿Este código está bien o mal para crear un post? Elegí antes de ver la explicación.", "Está bien. El autor se deriva del usuario autenticado y no de un valor controlado por el cliente. El serializer también debería declarar autor como read_only.", code="""

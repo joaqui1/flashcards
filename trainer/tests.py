@@ -31,6 +31,8 @@ class CardCatalogTests(SimpleTestCase):
             "answer",
             "code",
             "answer_code",
+            "context",
+            "explanation",
             "kind",
                 "difficulty",
                 "source",
@@ -42,6 +44,15 @@ class CardCatalogTests(SimpleTestCase):
                 self.assertTrue(card["question"].strip())
                 self.assertTrue(card["answer"].strip())
                 self.assertTrue(card["source"].startswith("https://"))
+
+    def test_complex_cards_include_context_and_first_principles(self):
+        contextual = [card for card in CARDS if card["context"]]
+        explained = [card for card in CARDS if card["explanation"]]
+
+        self.assertGreaterEqual(len(contextual), 30)
+        self.assertGreaterEqual(len(explained), 30)
+        self.assertTrue(all(len(card["context"]) >= 60 for card in contextual))
+        self.assertTrue(all(len(card["explanation"]) >= 120 for card in explained))
 
     def test_requested_core_modules_exist(self):
         module_ids = {module["id"] for module in MODULES}
@@ -70,6 +81,22 @@ class CardCatalogTests(SimpleTestCase):
             sum(card["verdict"] is False for card in verdict_cards),
         )
         self.assertTrue(all(card["kind"] == "veredicto" for card in verdict_cards))
+
+    def test_short_case_studies_have_complete_learning_flow(self):
+        cases = [card for card in CARDS if card["kind"] == "mini caso"]
+
+        self.assertGreaterEqual(len(cases), 28)
+        for card in cases:
+            with self.subTest(card=card["id"]):
+                self.assertTrue(card["context"])
+                self.assertTrue(card["code"])
+                self.assertTrue(card["answer_code"])
+                self.assertTrue(card["explanation"])
+
+    def test_study_page_exposes_case_study_filter(self):
+        response = self.client.get(reverse("trainer:study"))
+
+        self.assertContains(response, '<option value="casos">Mini-casos</option>')
 
 
 class TrainerViewsTests(SimpleTestCase):
