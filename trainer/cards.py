@@ -55,8 +55,8 @@ CURRICULUM_LEVELS = [
     {
         "id": 1,
         "name": "Fundamentos",
-        "short": "El lenguaje y el recorrido completo de una request.",
-        "goal": "Entender cada pieza antes de usar abstracciones de DRF.",
+        "short": "Del cliente a Django, la API y la base de datos.",
+        "goal": "Entender cómo funciona un backend antes de usar abstracciones de DRF.",
     },
     {
         "id": 2,
@@ -82,7 +82,7 @@ CURRICULUM_LEVELS = [
 # Level 1 is deliberately ordered by dependency. In particular, get_object is
 # introduced only after QuerySets, ViewSets, get_queryset and permissions.
 FOUNDATION_SEQUENCE = [
-    "py02", "py03", "py01", "py05", "py08",
+    "b01", "b02", "b03", "b04", "b05", "b06", "b07", "b08", "b09", "b10",
     "h01", "h18", "h13", "h14", "h15",
     "dj01", "dj02", "dj03", "dj07", "dj08", "dj09", "dj10",
     "m04", "m20", "m17", "m21", "m24",
@@ -242,6 +242,150 @@ def c(card_id, module, question, answer, *, code="", answer_code="", context="",
 
 
 CARDS = [
+    # FUNDAMENTOS DE BACKEND — antes de introducir abstracciones de Django/DRF
+    c(
+        "b01", "django",
+        "¿Qué es un backend y de qué es responsable cuando una app pide información?",
+        "Es el software que recibe requests de clientes, aplica reglas y permisos, lee o modifica datos y devuelve responses. El frontend presenta la experiencia; el backend protege y sostiene la verdad del sistema.",
+        context="Una aplicación móvil necesita mostrar posts. La pantalla no accede directamente a PostgreSQL: habla con un servicio que controla los datos.",
+        code="""
+            cliente  ──request──>  backend  ──consulta──>  base de datos
+            cliente  <─response──  backend  <─filas─────  base de datos
+        """,
+        explanation="Un cliente controla su interfaz y puede enviar cualquier cosa, por eso no puede ser la autoridad de las reglas ni de los datos compartidos. El backend es el límite confiable: interpreta la intención, valida quién puede hacerla, coordina persistencia y devuelve un resultado estable para muchos clientes.",
+        kind="fundamento", source="django",
+    ),
+    c(
+        "b02", "http_api",
+        "¿Qué son una request y una response? Identificá quién inicia cada una.",
+        "La request es el mensaje que el cliente envía al servidor para pedir una operación. La response es el mensaje con el que el servidor informa el resultado, mediante status, headers y un body opcional.",
+        context="El usuario toca “Ver posts”. Ese gesto local debe convertirse en una conversación por red con el backend.",
+        code="""
+            REQUEST                       RESPONSE
+            GET /api/posts/ HTTP/1.1      HTTP/1.1 200 OK
+            Accept: application/json      Content-Type: application/json
+                                          [{"id": 1, "titulo": "Hola"}]
+        """,
+        explanation="En HTTP el cliente siempre inicia el intercambio y el servidor responde a ese mensaje concreto. Separar request de response permite razonar con claridad: qué pidió el cliente, qué información entregó, qué decidió el servidor y cómo comunicó el resultado.",
+        kind="fundamento", source="requests",
+    ),
+    c(
+        "b03", "http_api",
+        "Desarmá esta request: ¿qué expresa el método, el path, los query params, los headers y el body?",
+        "El método expresa la operación, el path identifica el recurso, los query params modifican la consulta, los headers describen el intercambio y el body transporta datos de entrada cuando corresponde.",
+        context="Antes de aprender request.data o request.query_params, necesitás reconocer las partes del mensaje HTTP que Django y DRF van a parsear.",
+        code="""
+            POST /api/posts/?notificar=true HTTP/1.1
+            Authorization: Token abc123
+            Content-Type: application/json
+
+            {"titulo": "Mi primer post"}
+        """,
+        explanation="Un framework no inventa estos datos: organiza piezas que ya viajaban en el mensaje HTTP. Cada pieza tiene una responsabilidad diferente; mezclarlas produce APIs confusas, por ejemplo usar el body para identificar una ruta o un query param para enviar una representación completa.",
+        kind="fundamento", source="requests",
+    ),
+    c(
+        "b04", "http_api",
+        "¿Qué diferencia hay entre una API, un recurso y un endpoint?",
+        "La API es el contrato completo para comunicarse con el sistema. Un recurso es una entidad del dominio, como Post. Un endpoint es una combinación concreta de método y URL que permite operar sobre recursos.",
+        context="Un mismo backend ofrece varias operaciones y los clientes necesitan saber qué pueden pedir sin conocer su implementación interna.",
+        code="""
+            API:       contrato de comunicación
+            recurso:   Post
+            endpoints: GET  /api/posts/
+                       POST /api/posts/
+                       GET  /api/posts/7/
+        """,
+        explanation="Una API define una frontera: entradas aceptadas, resultados y errores observables. REST organiza esa frontera alrededor de recursos y usa la semántica de HTTP para operar sobre ellos. El endpoint es la puerta específica; no es toda la API ni el objeto guardado.",
+        kind="fundamento", source="requests",
+    ),
+    c(
+        "b05", "django",
+        "Seguí una request dentro de Django: ¿qué ocurre desde que llega hasta que sale la response?",
+        "Django construye un request, lo atraviesa por middleware, resuelve la URL, ejecuta la view y devuelve la response nuevamente por middleware hacia el servidor web.",
+        context="El cliente ya envió GET /api/posts/7/. Ahora seguí únicamente el recorrido dentro de la aplicación Django.",
+        code="""
+            HTTP request
+                ↓
+            middleware → URLconf → view → dominio/ORM
+                ↓
+            HttpResponse → middleware → cliente
+        """,
+        explanation="Un backend es una cadena de transformaciones con límites claros. El routing elige código, la view coordina el caso de uso y la response vuelve al protocolo. Middleware envuelve el recorrido para responsabilidades transversales como sesión, seguridad o logging.",
+        kind="fundamento", source="django",
+    ),
+    c(
+        "b06", "django",
+        "¿Qué responsabilidad tiene el URLconf y cuál tiene la view?",
+        "El URLconf decide qué view corresponde al path; la view recibe el request, coordina la operación y construye una response. La ruta selecciona, pero no debería contener la lógica del negocio.",
+        context="Django debe transformar /posts/7/ en una ejecución concreta sin llenar un único archivo con toda la aplicación.",
+        code="""
+            # urls.py: selección
+            path("posts/<int:pk>/", views.post_detail)
+
+            # views.py: coordinación
+            def post_detail(request, pk):
+                ...
+        """,
+        explanation="Primero hay que traducir una dirección externa a código interno; después ese código decide cómo cumplir la operación. Mantener routing y coordinación separados evita que la forma de la URL se convierta en lógica y permite probar o cambiar cada responsabilidad por separado.",
+        kind="fundamento", source="urls",
+    ),
+    c(
+        "b07", "modelos",
+        "¿Qué representan tabla, fila, columna, primary key y foreign key en una base relacional?",
+        "Una tabla agrupa entidades del mismo tipo; una fila es una entidad; una columna es un atributo. La primary key identifica una fila y la foreign key conecta una fila con otra tabla.",
+        context="El foro necesita guardar usuarios y posts de forma persistente, incluso cuando el proceso Django se reinicia.",
+        code="""
+            user                         post
+            id (PK) | username           id (PK) | titulo | autor_id (FK)
+            3       | ana                7       | Hola   | 3
+        """,
+        explanation="La memoria del proceso es temporal; la base conserva estado compartido y aplica relaciones. Una identidad estable permite volver a encontrar una fila, y una foreign key representa vínculos sin duplicar todos los datos del objeto relacionado en cada registro.",
+        kind="fundamento", source="postgres",
+    ),
+    c(
+        "b08", "orm_db",
+        "¿Qué problema resuelve el ORM y cómo se relacionan Model, QuerySet y SQL?",
+        "El Model describe datos y comportamiento en Python; el QuerySet describe una consulta; el ORM traduce esa consulta a SQL y convierte las filas resultantes nuevamente en objetos.",
+        context="Django necesita consultar PostgreSQL, pero queremos expresar la mayoría de las operaciones usando conceptos del dominio en Python.",
+        code="""
+            Post.objects.filter(publicado=True)
+                       ↓ ORM
+            SELECT * FROM post WHERE publicado = true;
+        """,
+        explanation="PostgreSQL entiende SQL, no clases de Python. El ORM es una capa de traducción que conserva la potencia de la base mientras ofrece una interfaz componible. No elimina SQL: para razonar sobre performance y resultados hay que recordar siempre qué consulta terminará ejecutándose.",
+        kind="fundamento", source="queries",
+    ),
+    c(
+        "b09", "serializers",
+        "¿Por qué una API necesita un serializer entre el JSON y el Model?",
+        "Porque JSON externo y objetos internos tienen contratos distintos. El serializer convierte objetos a datos de salida y, en entrada, parsea, valida y normaliza antes de permitir una escritura.",
+        context="El cliente puede enviar strings, campos faltantes o valores maliciosos. El Model no debería recibir directamente un diccionario sin validar.",
+        code="""
+            JSON no confiable → serializer.is_valid() → validated_data → Model
+            Model            → serializer.data      → JSON de respuesta
+        """,
+        explanation="Cruzar una frontera exige traducir representación y confianza. El serializer define qué campos forman parte del contrato y qué reglas debe cumplir el input. No reemplaza permisos ni base de datos: responde específicamente cómo entran y salen los datos.",
+        kind="fundamento", source="serializers",
+    ),
+    c(
+        "b10", "drf",
+        "Ubicá router, ViewSet, serializer, permission y ORM dentro de una request de DRF.",
+        "El router dirige la URL al ViewSet; autenticación y permissions controlan acceso; el serializer valida o representa; el ORM consulta o persiste; el ViewSet coordina todo y produce la Response.",
+        context="Ya conocés las piezas aisladas. Ahora armá el mapa que usarás para leer cualquier endpoint de Django REST Framework.",
+        code="""
+            router → ViewSet → permission
+                         ↓
+                    serializer
+                         ↓
+                      ORM/DB
+                         ↓
+                     Response
+        """,
+        explanation="Cada capa contesta una pregunta: a qué código llega, quién puede actuar, qué datos son válidos, cómo se persisten y qué se responde. Un buen junior puede seguir ese recorrido y ubicar un bug en la capa que realmente posee la responsabilidad.",
+        kind="fundamento", source="views",
+    ),
+
     # DJANGO ESENCIAL
     c("dj01", "django", "Seguí el recorrido de esta petición. ¿Qué decide qué función se ejecuta y qué debe devolver?", "El URLconf busca el primer patrón compatible y llama a la view. La view debe devolver una HttpResponse o subclase.", code="""
         GET /posts/42/

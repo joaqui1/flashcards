@@ -65,6 +65,8 @@ class CardCatalogTests(SimpleTestCase):
         )
 
         self.assertEqual([card["id"] for card in foundations], FOUNDATION_SEQUENCE)
+        self.assertEqual(foundations[0]["id"], "b01")
+        self.assertNotIn("python", {card["module"] for card in foundations})
         self.assertTrue(all(len(card["explanation"]) >= 120 for card in foundations))
         self.assertLess(
             next(card["sequence"] for card in foundations if card["id"] == "o01"),
@@ -74,6 +76,13 @@ class CardCatalogTests(SimpleTestCase):
             next(card["prerequisites"] for card in foundations if card["id"] == "d08"),
             ["o01", "d12", "p04"],
         )
+
+    def test_backend_primers_cover_the_request_to_database_path(self):
+        primers = [card for card in CARDS if card["id"].startswith("b")]
+
+        self.assertEqual([card["id"] for card in primers], [f"b{i:02}" for i in range(1, 11)])
+        self.assertTrue(all(card["level"] == 1 for card in primers))
+        self.assertTrue(all(card["context"] and card["explanation"] for card in primers))
 
     def test_interview_cards_live_in_final_level(self):
         interview_cards = [card for card in CARDS if card["module"] == "entrevista"]
