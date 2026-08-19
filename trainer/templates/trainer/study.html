@@ -5,8 +5,9 @@
 <section class="study-shell shell" data-study-root>
   <div class="study-head">
     <div>
-      <div class="eyebrow">SESIÓN</div>
-      <h1>Pensá como en la entrevista.</h1>
+      <div class="eyebrow">RUTA BACKEND JUNIOR</div>
+      <h1 data-level-heading>Primero entendé. Después abstraé.</h1>
+      <p class="study-lede" data-level-lede>Empezamos por el lenguaje, HTTP y el recorrido de una request.</p>
     </div>
     <div class="study-stats">
       <div><strong data-stat-due>0</strong><span>pendientes</span></div>
@@ -14,6 +15,33 @@
       <div><strong data-stat-mastered>0</strong><span>dominadas</span></div>
     </div>
   </div>
+
+  <section class="level-roadmap" aria-labelledby="level-roadmap-title">
+    <div class="level-roadmap-head">
+      <div>
+        <span class="eyebrow">PROGRESIÓN</span>
+        <h2 id="level-roadmap-title">Tu camino hasta la entrevista</h2>
+      </div>
+      <p>Para avanzar: 100% visto, 80% dominado, puntaje ≥75 y ningún “No salió”.</p>
+    </div>
+    <div class="level-grid">
+      {% for level in curriculum %}
+        <button class="level-card" type="button" data-level-choice="{{ level.id }}" aria-pressed="false">
+          <span class="level-index">0{{ level.id }}</span>
+          <span class="level-state" data-level-state>Calculando</span>
+          <strong>{{ level.name }}</strong>
+          <small>{{ level.short }}</small>
+          <span class="level-metrics">
+            <span><b data-level-seen>0/{{ level.card_count }}</b> vistas</span>
+            <span><b data-level-mastery>0%</b> dominio</span>
+            <span><b data-level-score>0</b> puntos</span>
+          </span>
+          <span class="level-progress" aria-hidden="true"><i data-level-bar></i></span>
+        </button>
+      {% endfor %}
+    </div>
+    <p class="level-guidance" data-level-guidance aria-live="polite"></p>
+  </section>
 
   <div class="study-toolbar">
     <label>
@@ -47,7 +75,7 @@
     <article class="flashcard" data-card tabindex="0">
       <div class="card-topline">
         <span data-kind>CONCEPTO</span>
-        <span data-difficulty>BASE</span>
+        <span><span data-card-level>NIVEL 1</span> · <span data-difficulty>BASE</span></span>
       </div>
       <div class="card-body front" data-front>
         <span class="card-kicker">LEÉ · PENSÁ · EXPLICÁ</span>
@@ -85,17 +113,17 @@
   <section class="rating-panel" data-rating hidden>
     <p>¿Qué tan bien te salió sin mirar?</p>
     <div class="rating-grid">
-      <button data-grade="again"><strong>1</strong><span>No salió</span><small>vuelve pronto</small></button>
-      <button data-grade="hard"><strong>2</strong><span>Costó</span><small>intervalo corto</small></button>
-      <button data-grade="good"><strong>3</strong><span>Bien</span><small>espaciar</small></button>
-      <button data-grade="easy"><strong>4</strong><span>Fácil</span><small>espaciar más</small></button>
+      <button data-grade="again"><strong>1</strong><span>No salió</span><small>0 pts · vuelve pronto</small></button>
+      <button data-grade="hard"><strong>2</strong><span>Costó</span><small>40 pts · intervalo corto</small></button>
+      <button data-grade="good"><strong>3</strong><span>Bien</span><small>80 pts · dominada</small></button>
+      <button data-grade="easy"><strong>4</strong><span>Fácil</span><small>100 pts · espaciar más</small></button>
     </div>
   </section>
 
   <div class="session-empty" data-empty hidden>
     <div class="eyebrow">SESIÓN COMPLETA</div>
     <h2>No quedan tarjetas para esta tanda.</h2>
-    <p>Podés mezclar otra sesión, cambiar los filtros o volver cuando haya tarjetas vencidas.</p>
+    <p data-empty-message>Podés mezclar otra sesión, cambiar los filtros o volver cuando haya tarjetas vencidas.</p>
     <button class="button primary" data-restart>Otra tanda</button>
   </div>
 </section>

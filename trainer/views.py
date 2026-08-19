@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from django.shortcuts import render
-from .cards import CARDS, MODULES, VERSION_INFO
+from .cards import CARDS, CURRICULUM_LEVELS, MODULES, VERSION_INFO
 
 
 def _module_stats():
@@ -41,7 +41,12 @@ def study(request):
     return render(
         request,
         "trainer/study.html",
-        {"modules": _module_stats(), "version": VERSION_INFO, "stats": _deck_stats()},
+        {
+            "modules": _module_stats(),
+            "curriculum": CURRICULUM_LEVELS,
+            "version": VERSION_INFO,
+            "stats": _deck_stats(),
+        },
     )
 
 
@@ -58,10 +63,22 @@ def cards_api(request):
     cards = CARDS
     if module and module != "all":
         cards = [card for card in CARDS if card["module"] == module]
-    return JsonResponse({"cards": cards, "count": len(cards), "version": VERSION_INFO})
+    return JsonResponse(
+        {
+            "cards": cards,
+            "count": len(cards),
+            "curriculum": CURRICULUM_LEVELS,
+            "version": VERSION_INFO,
+        }
+    )
 
 
 def meta_api(request):
     return JsonResponse(
-        {"modules": _module_stats(), "version": VERSION_INFO, **_deck_stats()}
+        {
+            "modules": _module_stats(),
+            "curriculum": CURRICULUM_LEVELS,
+            "version": VERSION_INFO,
+            **_deck_stats(),
+        }
     )

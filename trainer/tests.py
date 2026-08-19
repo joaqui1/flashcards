@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 from django.urls import reverse
 
-from .cards import CARDS, MODULES
+from .cards import CARDS, CURRICULUM_LEVELS, FOUNDATION_SEQUENCE, MODULES
 
 
 class CardCatalogTests(SimpleTestCase):
@@ -36,7 +36,10 @@ class CardCatalogTests(SimpleTestCase):
             "kind",
                 "difficulty",
                 "source",
-                "verdict",
+            "verdict",
+            "level",
+            "sequence",
+            "prerequisites",
         }
         for card in CARDS:
             with self.subTest(card=card["id"]):
@@ -44,6 +47,39 @@ class CardCatalogTests(SimpleTestCase):
                 self.assertTrue(card["question"].strip())
                 self.assertTrue(card["answer"].strip())
                 self.assertTrue(card["source"].startswith("https://"))
+
+    def test_curriculum_assigns_every_card_to_one_level(self):
+        level_ids = {level["id"] for level in CURRICULUM_LEVELS}
+
+        self.assertEqual(level_ids, {1, 2, 3, 4})
+        self.assertTrue(all(card["level"] in level_ids for card in CARDS))
+        self.assertEqual(
+            sum(level["card_count"] for level in CURRICULUM_LEVELS),
+            len(CARDS),
+        )
+
+    def test_foundations_are_ordered_and_explained_from_first_principles(self):
+        foundations = sorted(
+            (card for card in CARDS if card["level"] == 1),
+            key=lambda card: card["sequence"],
+        )
+
+        self.assertEqual([card["id"] for card in foundations], FOUNDATION_SEQUENCE)
+        self.assertTrue(all(len(card["explanation"]) >= 120 for card in foundations))
+        self.assertLess(
+            next(card["sequence"] for card in foundations if card["id"] == "o01"),
+            next(card["sequence"] for card in foundations if card["id"] == "d08"),
+        )
+        self.assertEqual(
+            next(card["prerequisites"] for card in foundations if card["id"] == "d08"),
+            ["o01", "d12", "p04"],
+        )
+
+    def test_interview_cards_live_in_final_level(self):
+        interview_cards = [card for card in CARDS if card["module"] == "entrevista"]
+
+        self.assertTrue(interview_cards)
+        self.assertTrue(all(card["level"] == 4 for card in interview_cards))
 
     def test_complex_cards_include_context_and_first_principles(self):
         contextual = [card for card in CARDS if card["context"]]
@@ -112,6 +148,14 @@ class TrainerViewsTests(SimpleTestCase):
         self.assertContains(response, 'data-verdict-choice="true"')
         self.assertContains(response, 'data-verdict-choice="false"')
 
+    def test_study_page_exposes_progressive_curriculum(self):
+        response = self.client.get(reverse("trainer:study"))
+
+        self.assertContains(response, "Tu camino hasta la entrevista")
+        self.assertContains(response, 'data-level-choice="1"')
+        self.assertContains(response, 'data-level-choice="4"')
+        self.assertContains(response, "100% visto")
+
     def test_cards_api_can_filter_by_module(self):
         response = self.client.get(reverse("trainer:cards_api"), {"module": "drf"})
 
@@ -120,6 +164,7 @@ class TrainerViewsTests(SimpleTestCase):
         expected = sum(card["module"] == "drf" for card in CARDS)
         self.assertEqual(payload["count"], expected)
         self.assertTrue(all(card["module"] == "drf" for card in payload["cards"]))
+        self.assertEqual(len(payload["curriculum"]), 4)
 
     def test_meta_api_exposes_deck_stats(self):
         payload = self.client.get(reverse("trainer:meta_api")).json()
@@ -129,3 +174,4 @@ class TrainerViewsTests(SimpleTestCase):
         self.assertEqual(payload["module_count"], len(MODULES))
         self.assertEqual(payload["with_code"], len(CARDS))
         self.assertEqual(payload["verdicts"], 20)
+        self.assertEqual(len(payload["curriculum"]), 4)

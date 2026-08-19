@@ -51,6 +51,50 @@ DOCS = {
 }
 
 
+CURRICULUM_LEVELS = [
+    {
+        "id": 1,
+        "name": "Fundamentos",
+        "short": "El lenguaje y el recorrido completo de una request.",
+        "goal": "Entender cada pieza antes de usar abstracciones de DRF.",
+    },
+    {
+        "id": 2,
+        "name": "Construir APIs",
+        "short": "CRUD, relaciones, validación, permisos y tests.",
+        "goal": "Construir una REST API pequeña, correcta y mantenible.",
+    },
+    {
+        "id": 3,
+        "name": "Backend sólido",
+        "short": "Performance, seguridad, datos y producción.",
+        "goal": "Razonar sobre fallos reales más allá del happy path.",
+    },
+    {
+        "id": 4,
+        "name": "Entrevista Junior",
+        "short": "Explicar decisiones y resolver mini-casos.",
+        "goal": "Responder con claridad, fundamentos y criterio técnico.",
+    },
+]
+
+
+# Level 1 is deliberately ordered by dependency. In particular, get_object is
+# introduced only after QuerySets, ViewSets, get_queryset and permissions.
+FOUNDATION_SEQUENCE = [
+    "py02", "py03", "py01", "py05", "py08",
+    "h01", "h18", "h13", "h14", "h15",
+    "dj01", "dj02", "dj03", "dj07", "dj08", "dj09", "dj10",
+    "m04", "m20", "m17", "m21", "m24",
+    "o01", "o15", "o19", "o18", "o20",
+    "s01", "s10", "s14", "s12", "s11",
+    "d01", "d04", "d10", "d12",
+    "p04", "p05", "p06", "d08",
+    "t01", "t04", "t05",
+    "g01", "g05",
+]
+
+
 # Some prompts are intentionally short, like they would be in an interview. These
 # notes provide the missing scenario without giving away the answer. Explanations
 # then rebuild the answer from the underlying invariant instead of adding trivia.
@@ -128,6 +172,58 @@ FIRST_PRINCIPLES = {
     "e16": "La disponibilidad exige evitar un cambio que necesite reescribir o validar toda la tabla de una vez. Expandir, completar por lotes y contraer divide el riesgo en pasos compatibles y reversibles.",
     "e18": "Una action es una nueva capacidad pública. Se revisa desde sus invariantes: quién puede ejecutarla, qué entrada acepta, qué cambia, cómo falla y cómo se demuestra todo eso con tests.",
 }
+
+
+# Every foundation card has its own primer. These are intentionally explicit:
+# a learner should be able to reveal an unfamiliar term and rebuild the answer
+# from the underlying model instead of memorising framework vocabulary.
+FIRST_PRINCIPLES.update({
+    "py02": "Una variable de Python referencia un objeto. == pregunta si dos objetos representan el mismo valor; is pregunta si ambas referencias apuntan al mismo objeto. None es un objeto único y por eso se comprueba con is None.",
+    "py03": "Asignar una lista a otra variable no copia sus elementos: crea una segunda referencia al mismo objeto mutable. Cuando una referencia modifica la lista, la otra observa el cambio porque nunca existieron dos listas independientes.",
+    "py01": "Python evalúa los valores por defecto cuando define la función, no cada vez que la llama. Si el valor es una lista mutable, todas las llamadas comparten ese objeto; usar None permite crear una lista nueva por invocación.",
+    "py05": "Una excepción comunica que una operación no pudo cumplir su contrato. Capturar Exception atrapa también errores de programación inesperados y destruye evidencia; se capturan solo los fallos que realmente se saben interpretar o recuperar.",
+    "py08": "Un context manager define qué debe ocurrir al entrar y al salir de un bloque. with garantiza la salida incluso ante una excepción, por eso recursos finitos como archivos, locks o conexiones pueden liberarse de forma confiable.",
+    "h01": "HTTP describe operaciones sobre recursos mediante método, URL, headers y body. El status resume el resultado de la operación: 200 para una lectura exitosa, 201 para creación y 204 cuando el éxito no necesita contenido de respuesta.",
+    "h18": "Una representación viaja como bytes y ambas partes deben saber cómo interpretarlos. Content-Type describe el formato del body que efectivamente se envía; Accept declara qué formatos sabe recibir el cliente en la respuesta.",
+    "h13": "PUT expresa reemplazar la representación del recurso y PATCH expresa aplicar un conjunto parcial de cambios. La diferencia importa porque un campo ausente puede significar eliminarlo en un reemplazo, pero dejarlo intacto en una modificación parcial.",
+    "h14": "Los status codes son un vocabulario compartido entre servidores, clientes, proxies y métricas. 400 señala input inválido, 401 falta de identidad válida, 403 falta de autorización, 404 ausencia y 409 conflicto con el estado actual.",
+    "h15": "El status pertenece al protocolo y permite reconocer éxito o fallo sin entender el JSON particular de cada API. El body agrega detalles. Responder 200 ante un error rompe esa separación y obliga a cada consumidor a inventar detección propia.",
+    "dj01": "Django recibe una petición HTTP y debe producir una respuesta HTTP. El URLconf traduce el path a una función o clase; la view recibe el request, coordina la lógica necesaria y devuelve una HttpResponse o una subclase.",
+    "dj02": "La URL puede transportar pares clave-valor después de ?. Django los parsea en request.GET, un QueryDict de strings. get permite leer una clave y elegir un valor por defecto cuando el cliente no la envió.",
+    "dj03": "Un template es texto con lugares que se completan usando un contexto. render combina template y contexto para producir HTML y luego lo envuelve en una HttpResponse; no guarda datos ni cambia por sí mismo la base.",
+    "dj07": "El proyecto contiene configuración y puntos de entrada de toda la instalación. Una app agrupa una capacidad del dominio que puede tener modelos, URLs, views y tests. Separarlos reduce acoplamiento y da límites comprensibles al código.",
+    "dj08": "Las URLs forman un árbol. include delega un prefijo a otro URLconf: el archivo raíz decide la zona general y cada app decide sus rutas internas. Así una app puede evolucionar sin convertir el router raíz en una lista global inmanejable.",
+    "dj09": "request es la representación que Django construye a partir del mensaje HTTP. Reúne método, path, headers, query params, body, cookies y archivos; middleware y autenticación pueden agregar información como session y user.",
+    "dj10": "Pedir un objeto por identidad supone que debe existir exactamente uno. get expresa esa expectativa y lanza una excepción si falla; get_object_or_404 traduce la ausencia esperable del dominio web a una respuesta HTTP 404.",
+    "m04": "Una ForeignKey representa que muchas filas de una tabla pueden referirse a una fila de otra. La columna con el identificador vive en el lado muchos: cada Post guarda autor_id para señalar a su User.",
+    "m20": "La base y la validación resuelven preguntas diferentes. null controla si la columna admite SQL NULL; blank controla si formularios o serializers aceptan un valor vacío. En texto, cadena vacía suele evitar dos representaciones de ausencia.",
+    "m17": "Una clave foránea crea una dependencia entre filas. on_delete define qué ocurre cuando desaparece el objeto referenciado: CASCADE elimina dependientes; PROTECT rechaza el borrado cuando conservarlos es una regla del dominio.",
+    "m21": "Cambiar una clase de modelo no cambia automáticamente una base existente. makemigrations describe la diferencia como una operación versionada; migrate ejecuta en orden esas operaciones sobre el esquema real.",
+    "m24": "Una ForeignKey permite navegar desde el objeto que guarda la referencia hacia el relacionado. related_name pone nombre al camino inverso, para preguntar desde un User por todas las filas que lo referencian sin escribir SQL manual.",
+    "o01": "Un QuerySet es una descripción componible de una consulta, no necesariamente sus resultados. filter conserva la posibilidad de cero, una o muchas filas; get exige exactamente una y por eso necesita excepciones para cero o varias.",
+    "o15": "get representa la afirmación de que el criterio identifica una única fila. Si publicado=True describe muchas, la afirmación es falsa y Django lanza MultipleObjectsReturned. filter modela correctamente una colección de tamaño variable.",
+    "o19": "Una búsqueda de colección puede no encontrar filas sin que el sistema haya fallado. filter devuelve un QuerySet vacío; su valor booleano refleja si tiene resultados, aunque exists expresa mejor y con menos trabajo la pregunta de existencia.",
+    "o18": "La evaluación lazy permite seguir agregando filtros antes de hablar con la base. La consulta se ejecuta cuando Python necesita datos concretos: al iterar, convertir a list, pedir len, evaluar como bool o consumir un resultado.",
+    "o20": "Si la única pregunta es si existe al menos una fila, traer objetos completos realiza trabajo que nadie usará. exists permite a la base detenerse al encontrar una coincidencia y comunica exactamente la intención del código.",
+    "s01": "Un serializer separa input no confiable de datos que la aplicación puede usar. is_valid parsea tipos y ejecuta reglas; solo después de pasar, validated_data contiene valores normalizados aptos para crear o actualizar objetos.",
+    "s10": "validated_data mira hacia la entrada: contiene únicamente campos aceptados después de validar. data mira hacia la salida: es la representación que se enviará al cliente. Son etapas distintas aunque a veces compartan nombres de campos.",
+    "s14": "La validación fallida es un resultado esperado de una API, no un error 500. raise_exception convierte los errores del serializer en ValidationError y DRF los transforma mediante su manejador en una respuesta 400 estructurada.",
+    "s12": "save decide entre dos operaciones según exista una instance. Sin instance todavía no hay objeto y llama create(validated_data); con instance el objetivo es modificarlo y llama update(instance, validated_data).",
+    "s11": "Un serializer normalmente exige todos los campos requeridos. partial=True cambia el contrato: las claves ausentes significan conservar el valor actual. Esa es la semántica que DRF usa para PATCH frente al reemplazo de PUT.",
+    "d01": "Un ViewSet agrupa operaciones sobre un mismo recurso. ModelViewSet conecta métodos HTTP con acciones estándar: list y retrieve leen, create inserta, update o partial_update modifican y destroy elimina.",
+    "d04": "Un router observa las acciones del ViewSet y construye rutas de colección y detalle. /posts/ no necesita un pk y atiende list/create; /posts/{pk}/ identifica una instancia y atiende retrieve, update y destroy.",
+    "d10": "DRF separa de dónde vienen los datos. query_params representa opciones incluidas en la URL, normalmente para búsqueda o filtros; data contiene el body parseado, normalmente la representación que se quiere crear o modificar.",
+    "d12": "queryset es una base fija para buscar objetos. get_queryset es un método que se ejecuta en el contexto de la request y permite que la colección dependa del usuario, filtros o action sin compartir resultados evaluados entre requests.",
+    "p04": "Autenticación establece una identidad a partir de sesión, token u otra credencial. Autorización toma esa identidad y decide si puede realizar una acción concreta. Saber quién es alguien no implica permitirle modificar cualquier objeto.",
+    "p05": "Los autenticadores de DRF producen dos piezas: request.user representa la identidad y request.auth conserva normalmente la credencial o información asociada. Si nadie se autentica, user es AnonymousUser y auth suele ser None.",
+    "p06": "401 significa que la request no presentó una identidad válida para el esquema elegido; 403 significa que el servidor conoce la identidad pero rechaza la acción. Algunos autenticadores sin WWW-Authenticate responden 403 también al anónimo.",
+    "d08": "self.get_object() es el camino estándar de un ViewSet para obtener la instancia indicada por la URL. Parte de get_queryset, aplica lookup_field, convierte ausencia en 404 y ejecuta permisos de objeto; un get directo omite parte de ese flujo.",
+    "t01": "Un test útil protege comportamiento observable, no solo que el código terminó. En una creación conviene verificar el status del contrato, la fila persistida y una regla del dominio como que el autor provenga del usuario autenticado.",
+    "t04": "La instancia Python del test y la fila de la base son copias en momentos distintos. Una request puede cambiar la fila sin mutar el objeto que ya estaba en memoria; refresh_from_db lo reemplaza con el estado persistido actual.",
+    "t05": "Un 200 solo demuestra que el servidor clasificó la request como exitosa. No demuestra datos, filtros, permisos ni efectos. El test debe afirmar la propiedad que se rompería si la implementación estuviera equivocada.",
+    "g01": "Git distingue el trabajo actual, la selección para la próxima instantánea y la historia confirmada. El working tree contiene ediciones, staging decide qué entra y commit guarda una instantánea identificable y recuperable.",
+    "g05": "Un secreto requerido es una precondición de arranque, no un valor opcional. Debe llegar desde el entorno y la aplicación debe fallar temprano si falta; continuar con None desplaza el error y puede iniciar con una configuración insegura.",
+})
 
 
 def block(value):
@@ -438,7 +534,7 @@ CARDS = [
         else:
             post.likes.add(request.user)
     """, kind="debugging", difficulty="alta", source="views"),
-    c("d08", "drf", "¿Por qué get_object es preferible a Post.objects.get dentro del ViewSet?", "Respeta get_queryset y lookup_field, ejecuta el flujo de permisos de objeto y convierte ausencia en 404.", code='post = self.get_object()', kind="decisión", difficulty="media", source="views"),
+    c("d08", "drf", "¿Qué es self.get_object(), qué pasos ejecuta y por qué puede devolver 404?", "Es el método del ViewSet que busca la instancia indicada por la URL dentro de get_queryset. Aplica lookup_field, convierte la ausencia en 404 y ejecuta los permisos de objeto.", code='post = self.get_object()', kind="decisión", difficulty="media", source="views"),
     c("d09", "drf", "¿Qué filtra y qué validación falta?", "Filtra por publicado si llega el parámetro. Falta validar valores permitidos; cualquier string distinto de true se interpreta como False.", code="""
         def get_queryset(self):
             qs = Post.objects.all()
@@ -1562,3 +1658,38 @@ CARDS = [
             return Response(status=204)
     """, kind="veredicto", source="python", verdict=True),
 ]
+
+
+PREREQUISITES = {
+    "d08": ["o01", "d12", "p04"],
+    "e01": ["d01", "s01", "p04"],
+    "e11": ["o16", "o17"],
+    "e14": ["d08"],
+}
+
+_foundation_order = {card_id: index for index, card_id in enumerate(FOUNDATION_SEQUENCE)}
+_level_positions = {level["id"]: 0 for level in CURRICULUM_LEVELS}
+
+for _catalog_index, _card in enumerate(CARDS):
+    if _card["id"] in _foundation_order:
+        _level = 1
+        _sequence = _foundation_order[_card["id"]]
+    elif _card["module"] == "entrevista":
+        _level = 4
+        _sequence = _catalog_index
+    elif _card["difficulty"] == "base" and _card["kind"] != "veredicto":
+        _level = 2
+        _sequence = _catalog_index
+    else:
+        _level = 3
+        _sequence = _catalog_index
+
+    _card["level"] = _level
+    _card["sequence"] = _sequence
+    _card["prerequisites"] = PREREQUISITES.get(_card["id"], [])
+    _level_positions[_level] += 1
+
+for _level_info in CURRICULUM_LEVELS:
+    _level_info["card_count"] = _level_positions[_level_info["id"]]
+
+del _catalog_index, _card, _level, _sequence, _level_info
