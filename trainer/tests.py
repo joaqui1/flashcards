@@ -80,7 +80,7 @@ class CardCatalogTests(SimpleTestCase):
     def test_backend_primers_cover_the_request_to_database_path(self):
         primers = [card for card in CARDS if card["id"].startswith("b")]
 
-        self.assertEqual([card["id"] for card in primers], [f"b{i:02}" for i in range(1, 11)])
+        self.assertEqual([card["id"] for card in primers], [f"b{i:02}" for i in range(1, 17)])
         self.assertTrue(all(card["level"] == 1 for card in primers))
         self.assertTrue(all(card["context"] and card["explanation"] for card in primers))
 

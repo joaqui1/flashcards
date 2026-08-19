@@ -151,9 +151,17 @@
     const due = cards.filter(card => progress[card.id]?.due && progress[card.id].due <= now)
       .sort((a, b) => progress[a.id].due - progress[b.id].due || bySequence(a, b));
     const fresh = cards.filter(card => !progress[card.id]).sort(bySequence);
+    const primerFresh = selectedLevel === 1 && selectedModule() === 'all' && els.mode.value === 'all'
+      ? fresh.filter(card => /^b\d+$/.test(card.id))
+      : [];
+    const regularFresh = primerFresh.length
+      ? fresh.filter(card => !/^b\d+$/.test(card.id))
+      : fresh;
     const future = cards.filter(card => progress[card.id]?.due > now)
       .sort((a, b) => progress[a.id].due - progress[b.id].due || bySequence(a, b));
-    queue = [...(mix ? shuffle(due) : due), ...fresh].slice(0, 25);
+    queue = primerFresh.length
+      ? [...primerFresh, ...(mix ? shuffle(due) : due), ...regularFresh].slice(0, 25)
+      : [...(mix ? shuffle(due) : due), ...regularFresh].slice(0, 25);
     if (!queue.length) queue = (mix ? shuffle(future) : future).slice(0, 10);
     completed = 0;
     renderStats();

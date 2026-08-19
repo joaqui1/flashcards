@@ -82,7 +82,8 @@ CURRICULUM_LEVELS = [
 # Level 1 is deliberately ordered by dependency. In particular, get_object is
 # introduced only after QuerySets, ViewSets, get_queryset and permissions.
 FOUNDATION_SEQUENCE = [
-    "b01", "b02", "b03", "b04", "b05", "b06", "b07", "b08", "b09", "b10",
+    "b01", "b02", "b03", "b11", "b04", "b13", "b12", "b14", "b15", "b16",
+    "b05", "b06", "b07", "b08", "b09", "b10",
     "h01", "h18", "h13", "h14", "h15",
     "dj01", "dj02", "dj03", "dj07", "dj08", "dj09", "dj10",
     "m04", "m20", "m17", "m21", "m24",
@@ -384,6 +385,97 @@ CARDS = [
         """,
         explanation="Cada capa contesta una pregunta: a qué código llega, quién puede actuar, qué datos son válidos, cómo se persisten y qué se responde. Un buen junior puede seguir ese recorrido y ubicar un bug en la capa que realmente posee la responsabilidad.",
         kind="fundamento", source="views",
+    ),
+    c(
+        "b11", "django",
+        "¿Qué es el objeto request que recibe una view y de dónde sale?",
+        "Es la representación en Python que Django construye a partir de la petición HTTP recibida. Organiza método, URL, headers, query params, body, cookies, archivos y datos agregados por capas como user.",
+        context="La red entrega bytes y texto HTTP. La view necesita una interfaz práctica para consultar esos datos sin parsear manualmente el protocolo.",
+        code="""
+            def post_list(request):
+                request.method       # "GET", "POST", ...
+                request.path         # "/api/posts/"
+                request.headers      # Accept, Authorization, ...
+                request.GET          # query params en Django
+                request.user         # agregado por autenticación
+        """,
+        explanation="request no es la petición viajando por la red: es el objeto que el framework crea para representarla dentro del programa. Cada atributo conserva una parte del mensaje o información derivada por middleware, parsers y autenticadores antes de llegar a la view.",
+        kind="fundamento", source="django",
+    ),
+    c(
+        "b12", "drf",
+        "¿Dónde leés un dato que viene en la URL, un query param, el JSON y un header?",
+        "Los parámetros del path llegan como argumentos de la view; los query params están en request.query_params; el JSON parseado está en request.data; los headers están en request.headers.",
+        context="La API recibe PATCH /posts/7/?notificar=true con un token y un JSON que cambia el título.",
+        code="""
+            def partial_update(self, request, pk=None):
+                pk                         # path: 7
+                request.query_params       # notificar=true
+                request.data               # {"titulo": "Nuevo"}
+                request.headers            # Authorization: Token ...
+        """,
+        explanation="La ubicación comunica intención. El path identifica el recurso, la query modifica cómo se procesa o busca, el body describe datos de la operación y los headers llevan metadatos del intercambio. DRF conserva esas fuentes separadas para que el contrato sea legible.",
+        kind="fundamento", source="requests",
+    ),
+    c(
+        "b13", "http_api",
+        "¿Cómo elegís entre GET, POST, PUT, PATCH y DELETE?",
+        "GET lee, POST crea o dispara una operación, PUT reemplaza, PATCH modifica parcialmente y DELETE elimina. La elección describe la intención y permite que clientes e infraestructura entiendan la request.",
+        context="El mismo recurso Post necesita operaciones distintas. No alcanza con cambiar la URL: el método forma parte del contrato del endpoint.",
+        code="""
+            GET    /api/posts/       # listar
+            POST   /api/posts/       # crear
+            PUT    /api/posts/7/     # reemplazar
+            PATCH  /api/posts/7/     # modificar parte
+            DELETE /api/posts/7/     # eliminar
+        """,
+        explanation="HTTP separa el objeto sobre el que se actúa de la clase de operación. Usar métodos con semántica consistente permite razonar sobre seguridad, reintentos, cache y respuestas sin inventar un protocolo nuevo para cada endpoint.",
+        kind="fundamento", source="requests",
+    ),
+    c(
+        "b14", "http_api",
+        "¿Qué debe decidir el backend al construir una response?",
+        "Debe elegir un status que describa el resultado, un body con los datos o errores necesarios y headers que expliquen esa representación. No todas las respuestas exitosas necesitan body.",
+        context="La view terminó su trabajo. Ahora tiene que comunicar de forma inequívoca si creó, encontró un error de validación o no halló el recurso.",
+        code="""
+            return Response(
+                {"id": 7, "titulo": "Hola"},
+                status=201,
+                headers={"Location": "/api/posts/7/"},
+            )
+        """,
+        explanation="La response es el único resultado que observa el cliente. El status ofrece una clasificación estándar, el body aporta detalle específico y los headers describen la representación o el intercambio. Si esas piezas se contradicen, el contrato se vuelve ambiguo.",
+        kind="fundamento", source="responses",
+    ),
+    c(
+        "b15", "drf",
+        "¿Cómo se maneja una petición HTTP dentro de una view sin mezclar todos los pasos?",
+        "Primero se identifica la operación, luego autenticación y permisos controlan acceso, el serializer valida la entrada, la lógica usa el ORM y finalmente se construye una Response. Un fallo esperado corta el flujo con un 4xx.",
+        context="POST /api/posts/ trae JSON no confiable y pretende crear una fila asociada al usuario autenticado.",
+        code="""
+            def create(self, request):
+                serializer = PostSerializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                post = serializer.save(autor=request.user)
+                return Response(PostSerializer(post).data, status=201)
+        """,
+        explanation="Manejar una request significa convertir input externo en una transición válida del sistema. El orden importa: no se escribe antes de validar ni se confía en identidad enviada por el cliente. Cada capa reduce incertidumbre hasta producir un resultado seguro.",
+        kind="fundamento", source="views",
+    ),
+    c(
+        "b16", "http_api",
+        "¿Cuál es la diferencia entre un error esperado 4xx y un fallo interno 5xx?",
+        "Un 4xx comunica que la request no puede completarse por sus datos, identidad, permisos o recurso. Un 5xx indica que el servidor no pudo cumplir una request que no debería haber fallado de esa manera.",
+        context="La API debe distinguir un título vacío, un usuario sin permiso, un post inexistente y una excepción inesperada al consultar la base.",
+        code="""
+            400  input inválido
+            401  sin autenticación válida
+            403  sin autorización
+            404  recurso inexistente
+            500  fallo inesperado del servidor
+        """,
+        explanation="No todo fallo es un bug y no todo error debe ocultarse como 500. Los 4xx forman parte del contrato y permiten al cliente corregir o detenerse. Los 5xx señalan una incapacidad del servidor y deben producir observabilidad para investigar la causa.",
+        kind="fundamento", source="status",
     ),
 
     # DJANGO ESENCIAL
