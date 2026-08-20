@@ -334,7 +334,7 @@ kbd { padding: 2px 5px; border: 1px solid currentColor; border-radius: 3px; font
   .module-grid, .feature-row { grid-template-columns: repeat(3, 1fr); }
   .outcome-grid { grid-template-columns: repeat(4, 1fr); }
   .study-head { flex-direction: row; align-items: end; }
-  .level-grid { grid-template-columns: repeat(4, 1fr); }
+  .level-grid { grid-template-columns: repeat(5, 1fr); }
   .study-toolbar { flex-wrap: nowrap; }
   .text-button.danger { margin-left: auto; }
   .version-box { grid-template-columns: 1fr 2fr auto; }

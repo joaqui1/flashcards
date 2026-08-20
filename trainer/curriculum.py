@@ -9,6 +9,7 @@ from .cards import (
     CARDS,
     CURRICULUM_LEVELS,
     FOUNDATION_SEQUENCE,
+    LEVEL_ZERO_SEQUENCE,
     MODULES,
     PREREQUISITES,
     VERSION_INFO,
@@ -165,13 +166,19 @@ _move_after("p06", "d02", "d03")
 _move_after("d08", "f03")
 
 
+_level_zero_order = {
+    card_id: index for index, card_id in enumerate(LEVEL_ZERO_SEQUENCE)
+}
 _foundation_order = {
     card_id: index for index, card_id in enumerate(FOUNDATION_SEQUENCE)
 }
 _level_positions = {level["id"]: 0 for level in CURRICULUM_LEVELS}
 
 for _catalog_index, _card in enumerate(CARDS):
-    if _card["id"] in _foundation_order:
+    if _card["id"] in _level_zero_order:
+        _level = 0
+        _sequence = _level_zero_order[_card["id"]]
+    elif _card["id"] in _foundation_order:
         _level = 1
         _sequence = _foundation_order[_card["id"]]
     elif _card["module"] == "entrevista":
@@ -198,6 +205,7 @@ __all__ = [
     "CARDS",
     "CURRICULUM_LEVELS",
     "FOUNDATION_SEQUENCE",
+    "LEVEL_ZERO_SEQUENCE",
     "MODULES",
     "VERSION_INFO",
 ]

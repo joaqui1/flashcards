@@ -53,10 +53,16 @@ DOCS = {
 
 CURRICULUM_LEVELS = [
     {
+        "id": 0,
+        "name": "Mapa inicial",
+        "short": "El vocabulario y las piezas antes de leer backend.",
+        "goal": "Reconocer qué es cada pieza y seguir una request completa sin asumir conocimientos previos.",
+    },
+    {
         "id": 1,
-        "name": "Fundamentos",
-        "short": "Del cliente a Django, la API y la base de datos.",
-        "goal": "Entender cómo funciona un backend antes de usar abstracciones de DRF.",
+        "name": "Fundamentos aplicados",
+        "short": "HTTP, Django, datos y DRF en código sencillo.",
+        "goal": "Usar el mapa inicial para leer y explicar el recorrido de código backend real.",
     },
     {
         "id": 2,
@@ -79,11 +85,21 @@ CURRICULUM_LEVELS = [
 ]
 
 
+# Level 0 teaches the map and vocabulary before asking the learner to interpret
+# framework code. Existing backend primers are interleaved with smaller bridges.
+LEVEL_ZERO_SEQUENCE = [
+    "z01", "z02", "b01", "b02", "z03", "b03", "z04", "b04",
+    "b13", "b14", "b16",
+    "z05", "z06", "z07", "z08", "z09", "z10",
+    "z11", "z12", "b11", "b05", "b06",
+    "b07", "z13", "b08", "b09", "z14", "b10", "b12", "b15",
+    "z15", "z16", "z17", "z18",
+]
+
+
 # Level 1 is deliberately ordered by dependency. In particular, get_object is
 # introduced only after QuerySets, ViewSets, get_queryset and permissions.
 FOUNDATION_SEQUENCE = [
-    "b01", "b02", "b03", "b11", "b04", "b13", "b12", "b14", "b15", "b16",
-    "b05", "b06", "b07", "b08", "b09", "b10",
     "h01", "h18", "h13", "h14", "h15",
     "dj01", "dj02", "dj03", "dj07", "dj08", "dj09", "dj10",
     "m04", "m20", "m17", "m21", "m24",
@@ -243,6 +259,262 @@ def c(card_id, module, question, answer, *, code="", answer_code="", context="",
 
 
 CARDS = [
+    # NIVEL 0 — MAPA Y VOCABULARIO ANTES DE LEER FRAMEWORKS
+    c(
+        "z01", "django",
+        "¿Quiénes participan cuando una persona toca “Ver posts” en una aplicación?",
+        "La persona usa un cliente —por ejemplo, un navegador o una app móvil—. Ese cliente envía un pedido a un servidor, donde corre el backend, y el backend puede consultar una base de datos antes de responder.",
+        context="Antes de memorizar nombres de Django, ubicá los participantes reales de la conversación y quién inicia cada paso.",
+        code="""
+            persona → cliente → servidor/backend → base de datos
+                    ← pantalla ← response       ← datos
+        """,
+        explanation="Cliente y servidor son roles en una comunicación. El cliente inicia un pedido; el servidor escucha y responde. El backend es el programa que corre del lado servidor. La base de datos conserva información, pero normalmente no queda expuesta directamente al cliente.",
+        kind="mapa", difficulty="inicio", source="django",
+    ),
+    c(
+        "z02", "django",
+        "Diferenciá frontend, backend, servidor y base de datos sin usarlos como sinónimos.",
+        "El frontend es la interfaz que usa la persona; el backend aplica reglas y ofrece datos; el servidor es el entorno o proceso donde ese backend se ejecuta; la base de datos persiste información.",
+        context="Las cuatro piezas pueden estar en máquinas distintas y cada una tiene una responsabilidad diferente.",
+        code="""
+            FRONTEND          BACKEND             BASE DE DATOS
+            muestra UI   →    aplica reglas   →   guarda estado
+                         ←    arma respuestas ←
+        """,
+        explanation="Frontend y backend describen responsabilidades de software. Servidor describe el rol que recibe conexiones y también puede referirse a la máquina o proceso que ejecuta el programa. La base de datos es otro sistema especializado: almacenar, relacionar y consultar información durable.",
+        kind="vocabulario", difficulty="inicio", source="django",
+    ),
+    c(
+        "z03", "http_api",
+        "Leé esta URL: ¿qué significan protocolo, host, puerto, path y query string?",
+        "https es el protocolo, api.ejemplo.com el host, 443 el puerto, /posts/7/ el path y ?detalle=true la query string. El path identifica una ruta; la query agrega opciones a esa petición.",
+        context="Una URL es una dirección estructurada. Separar sus partes evita llamar endpoint, parámetro y dirección completa a la misma cosa.",
+        code="""
+            https://api.ejemplo.com:443/posts/7/?detalle=true
+            └─protocolo  └─host       └path    └query string
+        """,
+        explanation="El protocolo define cómo conversar; el host señala qué servidor; el puerto identifica el servicio dentro de ese host; el path selecciona una ruta y la query string transporta pares clave-valor opcionales. En localhost, el host apunta a tu propia computadora.",
+        kind="vocabulario", difficulty="inicio", source="requests",
+    ),
+    c(
+        "z04", "http_api",
+        "¿Qué es JSON y qué tipos de valores reconocés en este ejemplo?",
+        "JSON es un formato de texto para intercambiar datos. El ejemplo contiene un objeto con strings, un número, un booleano, null y una lista. No es un objeto de Python aunque luego el framework lo convierta.",
+        context="El body de muchas APIs viaja como JSON. Primero hay que reconocer el formato antes de hablar de request.data o serializers.",
+        code="""
+            {
+              "titulo": "Hola",
+              "visitas": 3,
+              "publicado": true,
+              "resumen": null,
+              "tags": ["django", "api"]
+            }
+        """,
+        explanation="JSON representa objetos, listas, texto, números, booleanos y null mediante una sintaxis compartida entre lenguajes. Viaja como texto o bytes. Un parser lo transforma después en estructuras propias del lenguaje, como dict, list, str, int, bool y None en Python.",
+        kind="leer datos", difficulty="inicio", source="requests",
+    ),
+    c(
+        "z05", "python",
+        "¿Qué son una variable y un valor? Reconocé los tipos básicos del ejemplo.",
+        "Una variable es un nombre que referencia un valor. titulo referencia un string, visitas un entero, publicado un booleano, tags una lista y metadata un diccionario.",
+        context="El código backend usa nombres para conservar y mover datos. El signo = asigna una referencia; no expresa igualdad matemática.",
+        code="""
+            titulo = "Hola"             # str
+            visitas = 3                 # int
+            publicado = True            # bool
+            tags = ["django", "api"]   # list
+            metadata = {"autor": 7}     # dict
+        """,
+        explanation="Python trabaja con objetos de distintos tipos y variables que los referencian. El tipo determina qué representa un valor y qué operaciones admite. List agrupa elementos por posición; dict los organiza por claves. None representa ausencia de valor.",
+        kind="leer Python", difficulty="inicio", source="python",
+    ),
+    c(
+        "z06", "python",
+        "En esta función, ¿qué son nombre, 'Ana', saludo y return?",
+        "nombre es un parámetro, 'Ana' es el argumento de la llamada, saludo es una variable local y return entrega el resultado al código que llamó la función.",
+        context="Una función agrupa pasos bajo un nombre. Definirla no la ejecuta; se ejecuta cuando otro código la llama con paréntesis.",
+        code="""
+            def saludar(nombre):
+                saludo = f"Hola {nombre}"
+                return saludo
+
+            mensaje = saludar("Ana")
+        """,
+        explanation="def crea una función con parámetros que recibirán valores. Una llamada suministra argumentos y abre una ejecución local. return termina esa ejecución y devuelve un valor. En una view, ocurre la misma idea: Django llama una función con request y recibe una response.",
+        kind="leer Python", difficulty="inicio", source="python",
+    ),
+    c(
+        "z07", "python",
+        "Diferenciá clase, objeto o instancia, atributo y método.",
+        "Una clase define una clase de objetos; una instancia es un objeto concreto. post.titulo accede a un atributo y post.publicar() llama un método, es decir, comportamiento asociado al objeto.",
+        context="Django y DRF usan clases y objetos todo el tiempo: Model, Serializer y ViewSet son clases; post, serializer y request son objetos concretos.",
+        code="""
+            class Post:
+                def publicar(self):
+                    self.publicado = True
+
+            post = Post()          # objeto o instancia
+            post.titulo = "Hola"  # atributo
+            post.publicar()        # método
+        """,
+        explanation="La clase describe estructura y comportamiento compartido; la instancia conserva el estado concreto. El punto permite acceder a nombres pertenecientes a un objeto o módulo. Un método es una función vinculada a una instancia y self representa esa instancia durante la llamada.",
+        kind="leer Python", difficulty="inicio", source="python",
+    ),
+    c(
+        "z08", "python",
+        "¿Qué hacen import y el punto en models.Model o post.autor.username?",
+        "import vuelve disponible código de otro módulo. El punto navega un nombre dentro de un módulo u objeto: models contiene Model; post contiene autor y ese usuario contiene username.",
+        context="Mucho código de framework parece una sola palabra larga, pero suele ser una navegación de izquierda a derecha por objetos conocidos.",
+        code="""
+            from django.db import models
+
+            class Post(models.Model):
+                ...
+
+            nombre = post.autor.username
+        """,
+        explanation="Los módulos organizan código y los imports permiten reutilizarlo sin copiarlo. La notación con punto expresa acceso a atributos. Leerla de izquierda a derecha ayuda a reconstruir la cadena: qué objeto tengo, qué miembro pido y qué valor o comportamiento devuelve.",
+        kind="leer Python", difficulty="inicio", source="python",
+    ),
+    c(
+        "z09", "python",
+        "¿Qué operaciones expresan paréntesis, corchetes y encadenamiento con puntos?",
+        "Los paréntesis suelen llamar una función o método; los corchetes acceden por clave o posición; los puntos encadenan accesos o llamadas sobre el resultado anterior.",
+        context="No necesitás conocer todavía el ORM para separar la forma del código de lo que hace cada operación particular.",
+        code="""
+            request.data["titulo"]
+            Post.objects.filter(publicado=True).first()
+            nombres[0]
+        """,
+        explanation="La sintaxis ofrece pistas estables. [] selecciona un elemento; () ejecuta algo invocable; . accede a un miembro. En una cadena, cada paso recibe el resultado del anterior. Después se aprende el contrato particular de data, filter o first sin volver a descifrar la gramática.",
+        kind="leer Python", difficulty="inicio", source="python",
+    ),
+    c(
+        "z10", "python",
+        "¿Para qué sirven if, for y una excepción?",
+        "if elige un camino según una condición, for repite un bloque para varios elementos y una excepción comunica que una operación no pudo cumplir lo esperado.",
+        context="Los backends deciden, recorren colecciones y manejan fallos. Estas tres formas aparecen luego en views, queries, validaciones y tests.",
+        code="""
+            if request.user.is_authenticated:
+                for post in posts:
+                    print(post.titulo)
+            else:
+                raise PermissionError("Falta autenticación")
+        """,
+        explanation="El flujo normal no es siempre lineal. Una condición abre ramas; un bucle aplica trabajo repetido; una excepción interrumpe el camino cuando el contrato falla y puede ser traducida por una capa superior. No toda excepción es un error HTTP, pero los frameworks suelen mapear algunas.",
+        kind="leer Python", difficulty="inicio", source="python",
+    ),
+    c(
+        "z11", "django",
+        "¿Qué son un framework, Django y Django REST Framework?",
+        "Un framework aporta estructura y piezas reutilizables. Django es un framework web de Python. Django REST Framework se monta sobre Django y agrega herramientas especializadas para construir APIs, como serializers, ViewSets y Response.",
+        context="DRF no reemplaza a Django y Django no reemplaza a Python: son capas que agregan contratos y automatización sobre la anterior.",
+        code="""
+            Python
+              └─ Django
+                   └─ Django REST Framework (DRF)
+        """,
+        explanation="Python es el lenguaje; Django resuelve routing, requests, responses, modelos y otras necesidades web; DRF reutiliza esas bases y añade abstracciones para APIs. Saber en qué capa vive una pieza ayuda a buscar documentación y ubicar responsabilidades.",
+        kind="mapa", difficulty="inicio", source="django",
+    ),
+    c(
+        "z12", "django",
+        "¿Qué hacen la terminal, manage.py y runserver durante el desarrollo?",
+        "La terminal permite ejecutar comandos. manage.py carga el proyecto Django para tareas administrativas. runserver inicia un servidor local de desarrollo que escucha requests, normalmente en localhost:8000.",
+        context="Editar archivos no pone el backend a escuchar automáticamente. Hace falta iniciar un proceso y observar su salida para probarlo.",
+        code="""
+            python manage.py runserver
+
+            navegador → http://127.0.0.1:8000/ → Django local
+        """,
+        explanation="Un archivo contiene código; un proceso es ese código ejecutándose. El comando crea un proceso de desarrollo y lo conecta a un puerto local. manage.py también expone tareas como test, makemigrations y migrate usando la configuración correcta del proyecto.",
+        kind="flujo de trabajo", difficulty="inicio", source="django",
+    ),
+    c(
+        "z13", "modelos",
+        "¿Cómo se relacionan un Model, una tabla y una migración?",
+        "El Model describe en Python la estructura y reglas cercanas de una entidad; normalmente se representa en una tabla. Una migración es un cambio versionado que lleva el esquema real de la base de un estado a otro.",
+        context="Cambiar models.py cambia código, pero una base ya creada necesita instrucciones explícitas para modificar sus tablas y columnas.",
+        code="""
+            class Post(models.Model):       tabla post
+                titulo = models.CharField   columna titulo
+
+            cambio de Model → migración → cambio de esquema
+        """,
+        explanation="El Model es la descripción usada por Django; la tabla es la estructura persistente administrada por la base. No son el mismo objeto. Las migraciones registran operaciones reproducibles para que desarrollo, tests y producción evolucionen el esquema en el mismo orden.",
+        kind="mapa", difficulty="inicio", source="migrations",
+    ),
+    c(
+        "z14", "auth_security",
+        "En el mapa de una API, ¿qué preguntan autenticación, autorización y validación?",
+        "Autenticación pregunta quién hace la request; autorización, si puede realizar esa acción; validación, si los datos enviados cumplen el contrato. Son controles diferentes y pueden fallar por separado.",
+        context="Tener un JSON válido no otorga permiso, y reconocer a un usuario no vuelve válidos todos los datos que mande.",
+        code="""
+            identidad válida ──> autenticación
+            acción permitida ──> autorización / permissions
+            datos correctos  ──> validación / serializer
+        """,
+        explanation="Una API recibe identidad, intención y datos no confiables. Cada control reduce una incertidumbre distinta. Separarlos evita errores como aceptar autor desde el body, usar el serializer como permiso o creer que estar autenticado habilita modificar cualquier recurso.",
+        kind="mapa", difficulty="inicio", source="authentication",
+    ),
+    c(
+        "z15", "testing",
+        "¿Qué es un test automatizado y qué significan preparar, actuar y afirmar?",
+        "Es código que ejecuta un escenario y comprueba un resultado esperado. Primero prepara un mundo conocido, después realiza la acción y finalmente usa assertions para verificar la respuesta y los efectos.",
+        context="Un test no demuestra que toda la aplicación sea correcta; protege propiedades concretas y avisa cuando un cambio las rompe.",
+        code="""
+            # preparar
+            post = Post.objects.create(titulo="Antes")
+            # actuar
+            response = client.patch(url, {"titulo": "Después"})
+            # afirmar
+            self.assertEqual(response.status_code, 200)
+        """,
+        explanation="La preparación controla el estado inicial; la acción atraviesa el comportamiento que interesa; la afirmación compara lo observable con el contrato. Un buen test falla por una razón comprensible y comprueba tanto la respuesta como los cambios persistidos cuando corresponde.",
+        kind="mapa", difficulty="inicio", source="django_testing",
+    ),
+    c(
+        "z16", "git_deploy",
+        "¿Qué problema resuelve Git y qué es un repositorio?",
+        "Git registra versiones del código. Un repositorio es la carpeta de trabajo junto con su historia versionada; permite comparar cambios, crear ramas y volver a estados conocidos.",
+        context="Guardar un archivo conserva su contenido actual. Hacer un commit registra una instantánea intencional dentro de una historia compartible.",
+        code="""
+            editar archivo → seleccionar cambios → commit
+                              git add            git commit
+        """,
+        explanation="El control de versiones conserva decisiones en el tiempo y permite coordinar trabajo. Git distingue los archivos actuales, los cambios seleccionados para la próxima instantánea y los commits ya registrados. GitHub puede alojar el repositorio, pero no es Git mismo.",
+        kind="mapa", difficulty="inicio", source="git",
+    ),
+    c(
+        "z17", "git_deploy",
+        "¿Qué son configuración, variable de entorno y secreto?",
+        "La configuración cambia el comportamiento según el entorno. Una variable de entorno entrega un valor al proceso sin escribirlo en el código. Un secreto es configuración sensible, como una clave, que no debe publicarse en Git.",
+        context="El mismo código puede ejecutarse en desarrollo y producción con dominios, bases y credenciales diferentes.",
+        code="""
+            código compartido + configuración del entorno = proceso configurado
+
+            DJANGO_SECRET_KEY=valor_privado
+        """,
+        explanation="Separar código de configuración permite desplegar la misma versión en varios entornos. Las variables de entorno son un mecanismo para inyectar valores al arrancar. No vuelven seguro un valor por sí solas: el sistema de deploy debe almacenarlo y limitar su acceso.",
+        kind="mapa", difficulty="inicio", source="deploy",
+    ),
+    c(
+        "z18", "drf",
+        "Contá de punta a punta qué ocurre en GET /api/posts/7/ usando una frase por capa.",
+        "El cliente envía la request; el router elige el ViewSet; autenticación y permissions determinan identidad y acceso; el ORM obtiene el Model desde la base; el serializer arma datos; el ViewSet devuelve una Response HTTP.",
+        context="Esta tarjeta cierra el Nivel 0: el objetivo no es conocer cada método, sino poder ubicar cada palabra del Nivel 1 en un recorrido común.",
+        code="""
+            cliente → router → ViewSet → auth/permission
+                              ↓
+                         ORM ↔ base de datos
+                              ↓
+                         serializer → Response → cliente
+        """,
+        explanation="El recorrido es un mapa de responsabilidades, no una secuencia rígida de todas las líneas internas. Routing selecciona, seguridad controla, ORM persiste, serializer traduce y la view coordina el caso de uso. El Nivel 1 profundiza cada vínculo leyendo código pequeño.",
+        kind="integración", difficulty="inicio", source="views",
+    ),
+
     # FUNDAMENTOS DE BACKEND — antes de introducir abstracciones de Django/DRF
     c(
         "b01", "django",
@@ -1903,11 +2175,15 @@ PREREQUISITES = {
     "e14": ["d08"],
 }
 
+_level_zero_order = {card_id: index for index, card_id in enumerate(LEVEL_ZERO_SEQUENCE)}
 _foundation_order = {card_id: index for index, card_id in enumerate(FOUNDATION_SEQUENCE)}
 _level_positions = {level["id"]: 0 for level in CURRICULUM_LEVELS}
 
 for _catalog_index, _card in enumerate(CARDS):
-    if _card["id"] in _foundation_order:
+    if _card["id"] in _level_zero_order:
+        _level = 0
+        _sequence = _level_zero_order[_card["id"]]
+    elif _card["id"] in _foundation_order:
         _level = 1
         _sequence = _foundation_order[_card["id"]]
     elif _card["module"] == "entrevista":

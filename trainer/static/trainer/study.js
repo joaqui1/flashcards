@@ -18,12 +18,12 @@
   };
 
   const STORAGE_KEY = 'backend-recall-progress-v1';
-  const LEVEL_KEY = 'backend-recall-level-v1';
+  const LEVEL_KEY = 'backend-recall-level-v2';
   const GRADE_POINTS = { again: 0, hard: 40, good: 80, easy: 100 };
   const MASTERED_GRADES = new Set(['good', 'easy']);
   const UNLOCK_SCORE = 75;
   const UNLOCK_MASTERY = 80;
-  let allCards = [], curriculum = [], queue = [], current = null, selectedLevel = 1, completed = 0;
+  let allCards = [], curriculum = [], queue = [], current = null, selectedLevel = 0, completed = 0;
   let revealed = false, verdictAnswered = false;
   const progress = loadProgress();
 
@@ -50,6 +50,12 @@
     return card.code && !['debugging', 'completar'].includes(card.kind) && card.module !== 'entrevista';
   }
   function cardsForLevel(level) { return allCards.filter(card => card.level === level); }
+  function levelIds() { return curriculum.map(item => item.id).sort((a, b) => a - b); }
+  function firstLevel() { return levelIds()[0] ?? 0; }
+  function nextLevelAfter(level) {
+    const ids = levelIds(), index = ids.indexOf(level);
+    return index >= 0 ? (ids[index + 1] ?? null) : null;
+  }
   function eligibleCards() {
     const module = selectedModule();
     return cardsForLevel(selectedLevel).filter(card => (module === 'all' || card.module === module) && matchesMode(card));
@@ -74,20 +80,21 @@
       && stats.score >= UNLOCK_SCORE && stats.failed === 0;
   }
   function unlockedLevels() {
-    const unlocked = new Set([1]);
-    const maxLevel = curriculum.length || 4;
-    for (let level = 2; level <= maxLevel; level += 1) {
-      if (levelPassed(statsForLevel(level - 1))) unlocked.add(level);
+    const ids = levelIds();
+    const unlocked = new Set(ids.length ? [ids[0]] : [0]);
+    for (let index = 1; index < ids.length; index += 1) {
+      if (levelPassed(statsForLevel(ids[index - 1]))) unlocked.add(ids[index]);
       else break;
     }
     return unlocked;
   }
   function recommendedLevel() {
-    const unlocked = unlockedLevels();
-    for (let level = 1; level <= (curriculum.length || 4); level += 1) {
+    const unlocked = unlockedLevels(), ids = levelIds();
+    for (const level of ids) {
       if (unlocked.has(level) && !levelPassed(statsForLevel(level))) return level;
     }
-    return Math.max(...unlocked);
+    const available = ids.filter(level => unlocked.has(level));
+    return available[available.length - 1] ?? firstLevel();
   }
   function levelInfo(level) {
     return curriculum.find(item => item.id === level) || { id: level, name: `Nivel ${level}`, goal: 'Seguí construyendo criterio backend.' };
@@ -124,10 +131,10 @@
     if (!unlocked.has(selectedLevel)) {
       const recommendedInfo = levelInfo(recommended);
       els.levelGuidance.textContent = `Estás explorando contenido adelantado. La ruta recomendada continúa en Nivel ${recommended}: ${recommendedInfo.name}.`;
-    } else if (levelPassed(stats) && selectedLevel === curriculum.length) {
+    } else if (levelPassed(stats) && nextLevelAfter(selectedLevel) === null) {
       els.levelGuidance.textContent = 'Ruta completa. Mantené el dominio con repasos espaciados y simulaciones de entrevista.';
     } else if (levelPassed(stats)) {
-      els.levelGuidance.textContent = `Nivel superado. El Nivel ${selectedLevel + 1} está disponible.`;
+      els.levelGuidance.textContent = `Nivel superado. El Nivel ${nextLevelAfter(selectedLevel)} está disponible.`;
     } else {
       const needs = [];
       if (missingSeen) needs.push(`ver ${missingSeen} card${missingSeen === 1 ? '' : 's'}`);
@@ -151,11 +158,11 @@
     const due = cards.filter(card => progress[card.id]?.due && progress[card.id].due <= now)
       .sort((a, b) => progress[a.id].due - progress[b.id].due || bySequence(a, b));
     const fresh = cards.filter(card => !progress[card.id]).sort(bySequence);
-    const primerFresh = selectedLevel === 1 && selectedModule() === 'all' && els.mode.value === 'all'
-      ? fresh.filter(card => /^b\d+$/.test(card.id))
+    const primerFresh = selectedLevel === firstLevel() && selectedModule() === 'all' && els.mode.value === 'all'
+      ? fresh.filter(card => /^(?:z|b)\d+$/.test(card.id))
       : [];
     const regularFresh = primerFresh.length
-      ? fresh.filter(card => !/^b\d+$/.test(card.id))
+      ? fresh.filter(card => !/^(?:z|b)\d+$/.test(card.id))
       : fresh;
     const future = cards.filter(card => progress[card.id]?.due > now)
       .sort((a, b) => progress[a.id].due - progress[b.id].due || bySequence(a, b));
@@ -243,8 +250,8 @@
     };
     saveProgress();
     completed += 1;
-    const unlockedAfter = unlockedLevels(), nextLevel = selectedLevel + 1;
-    if (!unlockedBefore.has(nextLevel) && unlockedAfter.has(nextLevel)) {
+    const unlockedAfter = unlockedLevels(), nextLevel = nextLevelAfter(selectedLevel);
+    if (nextLevel !== null && !unlockedBefore.has(nextLevel) && unlockedAfter.has(nextLevel)) {
       selectedLevel = nextLevel;
       localStorage.setItem(LEVEL_KEY, String(selectedLevel));
       syncFiltersToUrl();
@@ -255,7 +262,7 @@
     nextCard();
   }
   function chooseLevel(level) {
-    if (!Number.isInteger(level) || level < 1 || level > curriculum.length) return;
+    if (!Number.isInteger(level) || !curriculum.some(item => item.id === level)) return;
     selectedLevel = level;
     localStorage.setItem(LEVEL_KEY, String(level));
     syncFiltersToUrl();
@@ -264,16 +271,17 @@
   function setFiltersFromUrl() {
     const params = new URLSearchParams(location.search);
     const module = params.get('module'), mode = params.get('mode');
-    const requestedLevel = Number(params.get('level')), savedLevel = Number(localStorage.getItem(LEVEL_KEY));
+    const requestedLevel = params.has('level') ? Number(params.get('level')) : null;
+    const savedRaw = localStorage.getItem(LEVEL_KEY), savedLevel = savedRaw === null ? null : Number(savedRaw);
     if (module && [...els.select.options].some(option => option.value === module)) els.select.value = module;
     if (mode && [...els.mode.options].some(option => option.value === mode)) els.mode.value = mode;
-    if (Number.isInteger(requestedLevel) && requestedLevel >= 1 && requestedLevel <= curriculum.length) selectedLevel = requestedLevel;
-    else if (Number.isInteger(savedLevel) && savedLevel >= 1 && savedLevel <= curriculum.length) selectedLevel = savedLevel;
+    if (Number.isInteger(requestedLevel) && curriculum.some(item => item.id === requestedLevel)) selectedLevel = requestedLevel;
+    else if (Number.isInteger(savedLevel) && curriculum.some(item => item.id === savedLevel)) selectedLevel = savedLevel;
     else selectedLevel = recommendedLevel();
   }
   function syncFiltersToUrl() {
     const params = new URLSearchParams();
-    if (selectedLevel !== 1) params.set('level', selectedLevel);
+    if (selectedLevel !== firstLevel()) params.set('level', selectedLevel);
     if (els.select.value !== 'all') params.set('module', els.select.value);
     if (els.mode.value !== 'all') params.set('mode', els.mode.value);
     const query = params.toString();
@@ -289,11 +297,11 @@
   root.querySelector('[data-reset-session]').addEventListener('click', () => buildQueue({ mix: true }));
   root.querySelector('[data-restart]').addEventListener('click', buildQueue);
   root.querySelector('[data-reset-progress]').addEventListener('click', () => {
-    if (!confirm('¿Reiniciar todo tu progreso y volver al Nivel 1?')) return;
+    if (!confirm('¿Reiniciar todo tu progreso y volver al Nivel 0?')) return;
     Object.keys(progress).forEach(key => delete progress[key]);
     saveProgress();
-    selectedLevel = 1;
-    localStorage.setItem(LEVEL_KEY, '1');
+    selectedLevel = firstLevel();
+    localStorage.setItem(LEVEL_KEY, String(selectedLevel));
     syncFiltersToUrl();
     buildQueue();
   });

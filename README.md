@@ -3,8 +3,9 @@
 Entrenador de recuperación activa para una entrevista junior de backend con Python, Django y Django REST Framework.
 
 - Django 6.0.8
-- 172 ejercicios en 11 módulos
-- Nivel 1 reforzado con 64 fundamentos ordenados: Model completo, CRUD ORM, ManyToMany, ModelSerializer, auth y flujo de una API mínima
+- 234 ejercicios en 11 módulos
+- Nivel 0 con 34 introducciones al vocabulario, la lectura básica de Python y el mapa completo de una request
+- Nivel 1 reforzado con fundamentos aplicados: Model completo, CRUD ORM, ManyToMany, ModelSerializer, auth y flujo de una API mínima
 - Todos los ejercicios parten de código, SQL, HTTP o comandos reales
 - Modos específicos para debugging, completar código, entrevista y “¿está bien o mal?”
 - 20 ejercicios de veredicto: primero se responde y después aparece el motivo
